@@ -397,7 +397,7 @@ function MusicSection({ token }: { token: string }) {
       {/* Upload */}
       <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
         <FileButton
-          accept="audio/*"
+          accept=".m4a,.mp3,.wav,.aac,.flac,.ogg,audio/*"
           label="Choose Audio File"
           selectedName={audioFile?.name}
           onChange={setAudioFile}
