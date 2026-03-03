@@ -15,6 +15,15 @@ export const list = query({
   },
 });
 
+export const getAudioUrl = query({
+  args: { id: v.id("songs") },
+  handler: async (ctx, { id }) => {
+    const song = await ctx.db.get(id);
+    if (!song || !song.isVisible) return null;
+    return song.storageId ? await ctx.storage.getUrl(song.storageId) : song.audioUrl ?? null;
+  },
+});
+
 export const getFeatured = query({
   handler: async (ctx) => {
     const songs = await ctx.db.query("songs").collect();

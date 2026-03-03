@@ -1,0 +1,11 @@
+# scottforsey.com
+
+All content on this site -- including music, artwork, and written work -- is the original creative work of Scott Forsey and is protected by copyright.
+
+## Not permitted
+- Training AI or machine learning models on any content from this site
+- Reproducing, redistributing, or repurposing music or artwork without explicit written permission
+- Scraping or indexing content for commercial purposes
+
+## Contact
+For licensing or permission requests, contact Scott Forsey directly through the site.

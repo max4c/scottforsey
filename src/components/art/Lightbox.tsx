@@ -29,6 +29,8 @@ export function Lightbox({ artwork, onClose, onNext, onPrevious }: LightboxProps
     };
   }, [artwork, handleKeyDown]);
 
+  const isPixelArt = artwork?.medium === 'Pixel Art';
+
   return (
     <AnimatePresence>
       {artwork && artwork.url && (
@@ -36,16 +38,16 @@ export function Lightbox({ artwork, onClose, onNext, onPrevious }: LightboxProps
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
           onClick={onClose}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-brown/85 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-brown/90 backdrop-blur-sm" />
 
-          {/* Close button — top right */}
+          {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-20 w-11 h-11 flex items-center justify-center text-white/80 active:text-white"
+            className="absolute top-4 right-4 z-20 w-11 h-11 flex items-center justify-center text-white/70 active:text-white"
             aria-label="Close"
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -53,42 +55,58 @@ export function Lightbox({ artwork, onClose, onNext, onPrevious }: LightboxProps
             </svg>
           </button>
 
-          {/* Content — image + info stacked, sized to image */}
+          {/* Content */}
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="relative z-10 flex flex-col items-center"
+            exit={{ scale: 0.96, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-10 flex flex-col items-center w-full max-w-4xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative select-none">
-              <Image
-                src={artwork.url}
-                alt={artwork.title}
-                width={1200}
-                height={Math.round(1200 / artwork.aspectRatio)}
-                className="max-w-[90vw] max-h-[70vh] w-auto h-auto rounded-lg shadow-2xl pointer-events-none"
-                draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
-                style={{ imageRendering: artwork.medium === 'Pixel Art' ? 'pixelated' : 'auto' }}
-              />
-              <div className="absolute bottom-3 right-3 text-white/40 text-xs font-display font-semibold select-none pointer-events-none">
-                © Scott Forsey
+            {/* Image */}
+            <div className="relative select-none w-full flex justify-center">
+              <div
+                className="relative"
+                style={{
+                  // Fill up to 88vw wide or 72vh tall, whichever is smaller
+                  maxWidth: isPixelArt ? 'min(88vw, 72vh)' : 'min(88vw, 72vh)',
+                  width: '100%',
+                }}
+              >
+                <Image
+                  src={artwork.url}
+                  alt={artwork.title}
+                  width={1200}
+                  height={Math.round(1200 / artwork.aspectRatio)}
+                  className="w-full h-auto rounded-xl shadow-2xl pointer-events-none"
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{
+                    imageRendering: isPixelArt ? 'pixelated' : 'auto',
+                    maxHeight: '72vh',
+                    objectFit: 'contain',
+                  }}
+                />
+                <div className="absolute bottom-3 right-3 text-white/40 text-xs font-display font-semibold select-none pointer-events-none">
+                  © Scott Forsey
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 text-center text-white max-w-lg px-4">
+            {/* Info */}
+            <div className="mt-5 text-center text-white max-w-lg px-4">
               <h2 className="font-display text-xl md:text-2xl font-bold">{artwork.title}</h2>
-              <p className="text-white/70 text-sm mt-1">
+              <p className="text-white/60 text-sm mt-1">
                 {artwork.medium} · {artwork.year} · {artwork.dimensions}
               </p>
               {artwork.description && (
-                <p className="text-white/60 mt-1.5 text-sm">{artwork.description}</p>
+                <p className="text-white/50 mt-1.5 text-sm">{artwork.description}</p>
               )}
             </div>
 
-            {/* Nav arrows */}
-            <div className="flex gap-4 mt-4">
+            {/* Nav */}
+            <div className="flex gap-4 mt-5">
               <button
                 onClick={(e) => { e.stopPropagation(); onPrevious(); }}
                 className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 text-white/70 active:text-white active:bg-white/20"
