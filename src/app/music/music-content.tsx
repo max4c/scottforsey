@@ -3,6 +3,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { TrackList } from '@/components/music/TrackList';
+import { AlbumCover } from '@/components/music/AlbumCover';
 import { useAudioPlayer } from '@/lib/audio/context';
 import { songToTrack } from '@/components/music/TrackRow';
 import { Button } from '@/components/ui/Button';
@@ -102,13 +103,13 @@ export function MusicPageContent() {
           return (
             <section key={album._id}>
               <div className="flex items-center gap-4 mb-4">
-                {album.coverUrl && (
-                  <img
-                    src={album.coverUrl}
-                    alt={album.title}
-                    className="w-16 h-16 rounded-lg object-cover shadow-sm flex-shrink-0"
-                  />
-                )}
+                <AlbumCover
+                  coverUrl={album.coverUrl}
+                  gradientFrom={album.gradientFrom}
+                  gradientTo={album.gradientTo}
+                  title={album.title}
+                  size="lg"
+                />
                 <div className="flex-1 min-w-0">
                   <h2 className="font-display font-bold text-brown text-lg">{album.title}</h2>
                   {album.description && (

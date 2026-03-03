@@ -7,6 +7,8 @@ export default defineSchema({
     description: v.optional(v.string()),
     coverStorageId: v.optional(v.id("_storage")),
     coverUrl: v.optional(v.string()),
+    gradientFrom: v.optional(v.string()),
+    gradientTo: v.optional(v.string()),
     order: v.number(),
     isVisible: v.boolean(),
   }),

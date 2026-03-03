@@ -5,6 +5,8 @@ export interface AlbumData {
   title: string;
   description?: string;
   coverUrl: string | null;
+  gradientFrom?: string;
+  gradientTo?: string;
   order: number;
   isVisible: boolean;
 }

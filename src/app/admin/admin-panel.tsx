@@ -5,6 +5,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { FileButton } from '@/components/ui/FileButton';
+import { AlbumCover } from '@/components/music/AlbumCover';
 
 const TOKEN_KEY = 'scottforsey_admin_token';
 
@@ -120,6 +121,8 @@ function AlbumsSection({ token }: { token: string }) {
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [gradientFrom, setGradientFrom] = useState('#f4a261');
+  const [gradientTo, setGradientTo] = useState('#e76f51');
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -151,11 +154,15 @@ function AlbumsSection({ token }: { token: string }) {
         title: title.trim(),
         description: description.trim() || undefined,
         coverStorageId,
+        gradientFrom,
+        gradientTo,
       });
 
       setTitle('');
       setDescription('');
       setCoverFile(null);
+      setGradientFrom('#f4a261');
+      setGradientTo('#e76f51');
     } catch (err) {
       console.error('Failed to create album:', err);
     } finally {
@@ -183,9 +190,41 @@ function AlbumsSection({ token }: { token: string }) {
           placeholder="Description (optional)"
           className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
         />
+
+        {/* Gradient picker */}
+        <div className="space-y-2">
+          <p className="text-xs text-brown-lighter">Cover gradient (used if no image)</p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={gradientFrom}
+                onChange={(e) => setGradientFrom(e.target.value)}
+                className="w-9 h-9 rounded cursor-pointer border border-brown/20"
+                title="Start color"
+              />
+              <span className="text-xs text-brown-lighter">to</span>
+              <input
+                type="color"
+                value={gradientTo}
+                onChange={(e) => setGradientTo(e.target.value)}
+                className="w-9 h-9 rounded cursor-pointer border border-brown/20"
+                title="End color"
+              />
+            </div>
+            {/* Live preview */}
+            {!coverPreview && (
+              <div
+                className="w-12 h-12 rounded-lg shadow-sm flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+              />
+            )}
+          </div>
+        </div>
+
         <FileButton
           accept="image/*"
-          label="Choose Cover Image"
+          label="Or choose a cover image"
           selectedName={coverFile?.name}
           onChange={setCoverFile}
           icon={
@@ -223,15 +262,13 @@ function AlbumsSection({ token }: { token: string }) {
       <div className="mt-4 space-y-2">
         {albums?.map((album) => (
           <div key={album._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
-            {album.coverUrl ? (
-              <img src={album.coverUrl} alt={album.title} className="w-10 h-10 rounded object-cover flex-shrink-0" />
-            ) : (
-              <div className="w-10 h-10 rounded bg-parchment flex-shrink-0 flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter">
-                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                </svg>
-              </div>
-            )}
+            <AlbumCover
+              coverUrl={album.coverUrl}
+              gradientFrom={(album as any).gradientFrom}
+              gradientTo={(album as any).gradientTo}
+              title={album.title}
+              size="sm"
+            />
             <div className="flex-1 min-w-0">
               <p className={`font-display font-semibold text-sm truncate ${album.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
                 {album.title}
@@ -240,6 +277,25 @@ function AlbumsSection({ token }: { token: string }) {
                 <p className="text-xs text-brown-lighter truncate">{album.description}</p>
               )}
             </div>
+            {/* Gradient editors for existing albums */}
+            {!album.coverUrl && (
+              <div className="flex items-center gap-1">
+                <input
+                  type="color"
+                  defaultValue={(album as any).gradientFrom ?? '#f4a261'}
+                  onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientFrom: e.target.value })}
+                  className="w-7 h-7 rounded cursor-pointer border border-brown/20"
+                  title="Start color"
+                />
+                <input
+                  type="color"
+                  defaultValue={(album as any).gradientTo ?? '#e76f51'}
+                  onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientTo: e.target.value })}
+                  className="w-7 h-7 rounded cursor-pointer border border-brown/20"
+                  title="End color"
+                />
+              </div>
+            )}
             <button
               onClick={() => updateAlbum({ token, id: album._id as Id<"albums">, isVisible: !album.isVisible })}
               className={`text-xs px-2 py-1 rounded ${album.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}
