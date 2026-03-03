@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useId } from 'react';
 
 interface FileButtonProps {
   accept: string;
@@ -12,21 +12,20 @@ interface FileButtonProps {
 }
 
 export function FileButton({ accept, onChange, onClear, selectedName, label, icon }: FileButtonProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const id = useId();
 
   return (
     <div className="flex items-center gap-3">
       <input
-        ref={inputRef}
+        id={id}
         type="file"
         accept={accept}
         className="sr-only"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-brown/25 bg-parchment/40 text-brown-light text-sm font-semibold active:bg-parchment transition-colors hover:border-sunset/50 hover:text-brown"
+      <label
+        htmlFor={id}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-brown/25 bg-parchment/40 text-brown-light text-sm font-semibold cursor-pointer active:bg-parchment transition-colors hover:border-sunset/50 hover:text-brown"
       >
         {icon ?? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60">
@@ -34,7 +33,7 @@ export function FileButton({ accept, onChange, onClear, selectedName, label, ico
           </svg>
         )}
         {label}
-      </button>
+      </label>
       {selectedName && (
         <span className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs text-brown-lighter truncate max-w-[140px]" title={selectedName}>
