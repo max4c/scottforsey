@@ -61,14 +61,21 @@ export function Lightbox({ artwork, onClose, onNext, onPrevious }: LightboxProps
             className="relative z-10 flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
-              src={artwork.url}
-              alt={artwork.title}
-              width={1200}
-              height={Math.round(1200 / artwork.aspectRatio)}
-              className="max-w-[90vw] max-h-[70vh] w-auto h-auto rounded-lg shadow-2xl"
-              style={{ imageRendering: artwork.medium === 'Pixel Art' ? 'pixelated' : 'auto' }}
-            />
+            <div className="relative select-none">
+              <Image
+                src={artwork.url}
+                alt={artwork.title}
+                width={1200}
+                height={Math.round(1200 / artwork.aspectRatio)}
+                className="max-w-[90vw] max-h-[70vh] w-auto h-auto rounded-lg shadow-2xl pointer-events-none"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ imageRendering: artwork.medium === 'Pixel Art' ? 'pixelated' : 'auto' }}
+              />
+              <div className="absolute bottom-3 right-3 text-white/40 text-xs font-display font-semibold select-none pointer-events-none">
+                © Scott Forsey
+              </div>
+            </div>
 
             <div className="mt-4 text-center text-white max-w-lg px-4">
               <h2 className="font-display text-xl md:text-2xl font-bold">{artwork.title}</h2>

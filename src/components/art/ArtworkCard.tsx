@@ -25,15 +25,21 @@ export function ArtworkCard({ artwork, onClick, index = 0 }: ArtworkCardProps) {
         className="w-full text-left group cursor-pointer"
       >
         <div className="rounded-lg overflow-hidden bg-white shadow-md hover:shadow-xl transition-all">
-          <div className="w-full relative">
+          <div className="w-full relative select-none">
             <Image
               src={artwork.url}
               alt={artwork.title}
               width={800}
               height={Math.round(800 / artwork.aspectRatio)}
-              className="w-full h-auto"
+              className="w-full h-auto pointer-events-none"
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
               style={{ imageRendering: artwork.medium === 'Pixel Art' ? 'pixelated' : 'auto' }}
             />
+            {/* Watermark */}
+            <div className="absolute bottom-2 right-2 text-white/40 text-[10px] font-display font-semibold select-none pointer-events-none">
+              © Scott Forsey
+            </div>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
               <div className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A3728" strokeWidth="2">
