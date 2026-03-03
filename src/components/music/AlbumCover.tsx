@@ -10,7 +10,7 @@ interface AlbumCoverProps {
 const sizes = {
   sm: 'w-10 h-10',
   md: 'w-16 h-16',
-  lg: 'w-24 h-24',
+  lg: 'w-14 h-14 md:w-20 md:h-20',
 };
 
 export function AlbumCover({ coverUrl, gradientFrom, gradientTo, title, size = 'md', className = '' }: AlbumCoverProps) {

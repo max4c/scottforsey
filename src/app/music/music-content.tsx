@@ -102,7 +102,7 @@ export function MusicPageContent() {
 
           return (
             <section key={album._id}>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <AlbumCover
                   coverUrl={album.coverUrl}
                   gradientFrom={album.gradientFrom}
@@ -111,9 +111,9 @@ export function MusicPageContent() {
                   size="lg"
                 />
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-display font-bold text-brown text-lg">{album.title}</h2>
+                  <h2 className="font-display font-bold text-brown text-base md:text-lg truncate">{album.title}</h2>
                   {album.description && (
-                    <p className="text-brown-light text-sm">{album.description}</p>
+                    <p className="text-brown-light text-sm truncate">{album.description}</p>
                   )}
                   <p className="text-brown-lighter text-xs mt-0.5">
                     {albumSongs.length} tracks · {formatDuration(albumDuration)}
@@ -121,12 +121,12 @@ export function MusicPageContent() {
                 </div>
                 <button
                   onClick={() => handlePlayAlbum(album._id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80 flex-shrink-0"
+                  className="flex items-center gap-1.5 px-2.5 py-2 md:px-3 md:py-1.5 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80 flex-shrink-0"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M8 5v14l11-7z" />
                   </svg>
-                  Play
+                  <span className="hidden md:inline">Play</span>
                 </button>
               </div>
               <TrackList songs={albumSongs} />
