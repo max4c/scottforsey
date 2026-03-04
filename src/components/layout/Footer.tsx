@@ -1,12 +1,19 @@
+'use client';
+
 import Image from 'next/image';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 export function Footer() {
+  const settings = useQuery(api.siteSettings.get);
+  const profileImageUrl = settings?.profileImageUrl ?? '/lucas.jpg';
+
   return (
     <footer className="border-t border-parchment bg-cream-dark/50 pb-20">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/lucas.jpg" alt="" width={20} height={20} className="w-5 h-5 rounded-full object-cover" />
+            <Image src={profileImageUrl} alt="" width={20} height={20} className="w-5 h-5 rounded-full object-cover" unoptimized />
             <span className="font-display font-semibold text-brown-light text-sm">
               Scott Forsey
             </span>

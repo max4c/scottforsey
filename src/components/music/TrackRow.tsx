@@ -22,7 +22,7 @@ export function songToTrack(song: SongData): Track {
 }
 
 export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowProps) {
-  const { state, currentTrack, playQueue, togglePlayPause, addToQueue, playNext } = useAudioPlayer();
+  const { state, currentTrack, play, playQueue, togglePlayPause, addToQueue, playNext } = useAudioPlayer();
   const isCurrentTrack = currentTrack?.id === song._id;
   const isPlaying = isCurrentTrack && state === 'playing';
   const isNew = song._creationTime != null && Date.now() - song._creationTime < 30 * 24 * 60 * 60 * 1000;
@@ -43,7 +43,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
 
   function handleRowClick() {
     if (isCurrentTrack) togglePlayPause();
-    else playQueue(allTracks, trackIndex);
+    else playQueue([track], 0);
   }
 
   return (

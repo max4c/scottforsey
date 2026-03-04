@@ -483,6 +483,26 @@ function MusicSection({ token }: { token: string }) {
     setEditingSongId(null);
   }
 
+  function moveUp(song: any) {
+    if (!songs) return;
+    const group = songs.filter((s: any) => s.albumId === song.albumId).sort((a: any, b: any) => a.order - b.order);
+    const idx = group.findIndex((s: any) => s._id === song._id);
+    if (idx <= 0) return;
+    const prev = group[idx - 1];
+    updateSong({ token, id: song._id as Id<"songs">, order: prev.order });
+    updateSong({ token, id: prev._id as Id<"songs">, order: song.order });
+  }
+
+  function moveDown(song: any) {
+    if (!songs) return;
+    const group = songs.filter((s: any) => s.albumId === song.albumId).sort((a: any, b: any) => a.order - b.order);
+    const idx = group.findIndex((s: any) => s._id === song._id);
+    if (idx < 0 || idx >= group.length - 1) return;
+    const next = group[idx + 1];
+    updateSong({ token, id: song._id as Id<"songs">, order: next.order });
+    updateSong({ token, id: next._id as Id<"songs">, order: song.order });
+  }
+
   return (
     <section>
       <h2 className="font-display text-lg font-bold text-brown mb-4">Music</h2>
@@ -641,6 +661,18 @@ function MusicSection({ token }: { token: string }) {
                   {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                 </select>
               )}
+              {(() => {
+                const group = (songs ?? []).filter((s: any) => s.albumId === (song as any).albumId).sort((a: any, b: any) => a.order - b.order);
+                const idx = group.findIndex((s: any) => s._id === song._id);
+                return (
+                  <>
+                    <button onClick={() => moveUp(song)} disabled={idx <= 0}
+                      className="text-xs px-2 py-1 rounded bg-parchment text-brown-lighter active:bg-parchment/70 disabled:opacity-30">↑</button>
+                    <button onClick={() => moveDown(song)} disabled={idx >= group.length - 1}
+                      className="text-xs px-2 py-1 rounded bg-parchment text-brown-lighter active:bg-parchment/70 disabled:opacity-30">↓</button>
+                  </>
+                );
+              })()}
               {editingSongId !== song._id && (
                 <button onClick={() => startRenameSong(song)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">Rename</button>
               )}

@@ -34,16 +34,16 @@ function ShareButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={handleShare}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-parchment text-brown text-sm font-semibold active:bg-parchment/70 transition-colors"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-parchment text-brown text-xs font-semibold active:bg-parchment/70 transition-colors"
     >
       {copied ? (
         <>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
           Copied!
         </>
       ) : (
         <>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
           Share
         </>
       )}
@@ -120,19 +120,19 @@ export default function AlbumPage() {
           <p className="text-brown-lighter text-xs mt-1">
             {albumSongs.length} tracks · {formatDuration(albumDuration)}
           </p>
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex gap-2 mt-3">
             <button
               onClick={handlePlay}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sunset text-white text-xs font-semibold active:bg-sunset/80"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
               Play
             </button>
             <button
               onClick={handleShuffle}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-parchment text-brown text-sm font-semibold active:bg-parchment/70"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-parchment text-brown text-xs font-semibold active:bg-parchment/70"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
               Shuffle
             </button>
             <ShareButton slug={slug} />
