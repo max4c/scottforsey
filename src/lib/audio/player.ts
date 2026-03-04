@@ -1,5 +1,3 @@
-import { Howl } from 'howler';
-
 export interface Track {
   id: string;
   title: string;
@@ -22,7 +20,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 class AudioPlayer {
-  private howl: Howl | null = null;
+  private audio: HTMLAudioElement | null = null;
   private _state: PlayerState = 'idle';
   private _currentTrack: Track | null = null;
   private _queue: Track[] = [];
@@ -34,6 +32,7 @@ class AudioPlayer {
   private _shuffle: boolean = false;
   private _repeat: RepeatMode = 'off';
   private _listeners: Set<Listener> = new Set();
+  // Simulate progress for tracks with no audio URL
   private _timeInterval: ReturnType<typeof setInterval> | null = null;
 
   get state() { return this._state; }
@@ -55,83 +54,109 @@ class AudioPlayer {
     this._listeners.forEach(l => l());
   }
 
-  private startTimeTracking() {
-    this.stopTimeTracking();
-    this._timeInterval = setInterval(() => {
-      if (this._state === 'playing') {
-        if (this.howl) {
-          this._currentTime = this.howl.seek() as number;
-        } else {
-          this._currentTime += 0.25;
-          if (this._currentTime >= this._duration) {
-            this.next();
-            return;
-          }
-        }
-        this.notify();
-      }
-    }, 250);
-  }
-
-  private stopTimeTracking() {
+  private destroyAudio() {
     if (this._timeInterval) {
       clearInterval(this._timeInterval);
       this._timeInterval = null;
     }
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.src = '';
+      this.audio = null;
+    }
   }
 
   play(track: Track) {
-    this.destroyHowl();
+    this.destroyAudio();
     this._currentTrack = track;
     this._currentTime = 0;
     this._duration = track.duration;
 
-    if (track.audioUrl) {
-      this._state = 'loading';
-      this.notify();
-
-      this.howl = new Howl({
-        src: [track.audioUrl],
-        html5: true,
-        volume: this._volume,
-        onload: () => {
-          this._state = 'playing';
-          this._duration = this.howl!.duration();
-          this.startTimeTracking();
-          this.notify();
-        },
-        onend: () => {
-          this.next();
-        },
-        onloaderror: () => {
-          this.destroyHowl();
-          this._state = 'paused';
-          this._currentTime = 0;
-          this.stopTimeTracking();
-          this.notify();
-        },
-      });
-      this.howl.play();
-    } else {
+    if (!track.audioUrl) {
+      // No audio file — simulate timed progress
       this._state = 'playing';
-      this.startTimeTracking();
       this.notify();
+      this._timeInterval = setInterval(() => {
+        this._currentTime += 0.25;
+        if (this._currentTime >= this._duration) {
+          clearInterval(this._timeInterval!);
+          this._timeInterval = null;
+          this.next();
+        } else {
+          this.notify();
+        }
+      }, 250);
+      return;
     }
+
+    this._state = 'loading';
+    this.notify();
+
+    const audio = new Audio();
+    audio.volume = this._volume;
+    audio.preload = 'auto';
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        this._duration = audio.duration;
+        this.notify();
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      this._currentTime = audio.currentTime;
+      this.notify();
+    });
+
+    audio.addEventListener('play', () => {
+      this._state = 'playing';
+      this.notify();
+    });
+
+    audio.addEventListener('pause', () => {
+      if (this._state === 'playing') {
+        this._state = 'paused';
+        this.notify();
+      }
+    });
+
+    audio.addEventListener('ended', () => {
+      this.next();
+    });
+
+    audio.addEventListener('error', () => {
+      this._state = 'paused';
+      this._currentTime = 0;
+      this.notify();
+    });
+
+    audio.src = track.audioUrl;
+    audio.play().catch(() => {
+      // play() rejected — likely before canplay event. Try again on canplay.
+      const onCanPlay = () => {
+        audio.removeEventListener('canplay', onCanPlay);
+        audio.play().catch(() => {
+          this._state = 'paused';
+          this.notify();
+        });
+      };
+      audio.addEventListener('canplay', onCanPlay);
+    });
+
+    this.audio = audio;
   }
 
   pause() {
     if (this._state !== 'playing') return;
-    this.howl?.pause();
+    this.audio?.pause();
     this._state = 'paused';
-    this.stopTimeTracking();
     this.notify();
   }
 
   resume() {
     if (this._state !== 'paused') return;
-    this.howl?.play();
+    this.audio?.play().catch(() => {});
     this._state = 'playing';
-    this.startTimeTracking();
     this.notify();
   }
 
@@ -142,13 +167,13 @@ class AudioPlayer {
 
   seek(time: number) {
     this._currentTime = time;
-    this.howl?.seek(time);
+    if (this.audio) this.audio.currentTime = time;
     this.notify();
   }
 
   setVolume(vol: number) {
     this._volume = Math.max(0, Math.min(1, vol));
-    this.howl?.volume(this._volume);
+    if (this.audio) this.audio.volume = this._volume;
     this.notify();
   }
 
@@ -181,7 +206,7 @@ class AudioPlayer {
     if (this._repeat === 'one') {
       this.seek(0);
       if (this._state === 'paused') this.resume();
-      else this.play(this._currentTrack!);
+      else if (this._currentTrack) this.play(this._currentTrack);
       return;
     }
 
@@ -189,18 +214,14 @@ class AudioPlayer {
       this._queueIndex++;
       this.play(this._queue[this._queueIndex]);
     } else if (this._repeat === 'all' && this._queue.length > 0) {
-      // If shuffle is on, re-shuffle the queue for the next loop
-      if (this._shuffle) {
-        this._queue = shuffleArray(this._originalQueue);
-      }
+      if (this._shuffle) this._queue = shuffleArray(this._originalQueue);
       this._queueIndex = 0;
       this.play(this._queue[0]);
     } else {
-      this.destroyHowl();
+      this.destroyAudio();
       this._state = 'idle';
       this._currentTrack = null;
       this._currentTime = 0;
-      this.stopTimeTracking();
       this.notify();
     }
   }
@@ -219,18 +240,13 @@ class AudioPlayer {
 
   toggleShuffle() {
     this._shuffle = !this._shuffle;
-    if (this._queue.length === 0) {
-      this.notify();
-      return;
-    }
+    if (this._queue.length === 0) { this.notify(); return; }
     const current = this._currentTrack;
     if (this._shuffle) {
-      // Shuffle remaining tracks after current; keep current at position 0
       const rest = this._originalQueue.filter(t => t.id !== current?.id);
       this._queue = current ? [current, ...shuffleArray(rest)] : shuffleArray(this._originalQueue);
       this._queueIndex = 0;
     } else {
-      // Restore original order, find current track's position
       this._queue = [...this._originalQueue];
       const idx = this._originalQueue.findIndex(t => t.id === current?.id);
       this._queueIndex = idx >= 0 ? idx : 0;
@@ -243,13 +259,6 @@ class AudioPlayer {
     else if (this._repeat === 'all') this._repeat = 'one';
     else this._repeat = 'off';
     this.notify();
-  }
-
-  private destroyHowl() {
-    if (this.howl) {
-      this.howl.unload();
-      this.howl = null;
-    }
   }
 }
 
