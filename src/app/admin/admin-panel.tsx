@@ -673,6 +673,7 @@ function ArtSection({ token }: { token: string }) {
   const removeArtwork = useMutation(api.artworks.remove);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
+  // Create form
   const [artFile, setArtFile] = useState<File | null>(null);
   const [artPreview, setArtPreview] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -683,12 +684,53 @@ function ArtSection({ token }: { token: string }) {
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editMedium, setEditMedium] = useState('');
+  const [editYear, setEditYear] = useState('');
+  const [editDimensions, setEditDimensions] = useState('');
+  const [editSeries, setEditSeries] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   useEffect(() => {
     if (!artFile) { setArtPreview(null); return; }
     const url = URL.createObjectURL(artFile);
     setArtPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [artFile]);
+
+  function startEdit(artwork: any) {
+    setEditingId(artwork._id);
+    setEditTitle(artwork.title);
+    setEditMedium(artwork.medium);
+    setEditYear(artwork.year.toString());
+    setEditDimensions(artwork.dimensions);
+    setEditSeries(artwork.series);
+    setEditDescription(artwork.description ?? '');
+  }
+
+  async function saveEdit(id: string) {
+    setEditSaving(true);
+    try {
+      await updateArtwork({
+        token,
+        id: id as Id<"artworks">,
+        title: editTitle.trim() || undefined,
+        medium: editMedium.trim() || undefined,
+        year: parseInt(editYear) || undefined,
+        dimensions: editDimensions.trim() || undefined,
+        series: editSeries.trim() || undefined,
+        description: editDescription.trim() || undefined,
+      });
+      setEditingId(null);
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   const handleUpload = async () => {
     const file = artFile;
@@ -737,15 +779,15 @@ function ArtSection({ token }: { token: string }) {
           className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         <div className="flex gap-2">
           <input type="text" value={medium} onChange={(e) => setMedium(e.target.value)} placeholder="Medium (e.g. Pixel Art)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+            className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
           <input type="text" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Year"
             className="w-20 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         </div>
         <div className="flex gap-2">
           <input type="text" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="Series (optional)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+            className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
           <input type="text" value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="Dimensions (auto)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+            className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         </div>
         <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)"
           className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
@@ -757,28 +799,65 @@ function ArtSection({ token }: { token: string }) {
 
       <div className="mt-4 space-y-2">
         {artworks?.map((artwork) => (
-          <div key={artwork._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
-            <div className="flex-1 min-w-0">
-              <p className={`font-display font-semibold text-sm truncate ${artwork.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
-                {artwork.title}
-              </p>
-              <p className="text-xs text-brown-lighter">
-                {artwork.medium} · {artwork.year}
-                {artwork.featured && ' · Featured'}
-              </p>
-            </div>
-            <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, featured: !artwork.featured })}
-              className={`text-xs px-2 py-1 rounded ${artwork.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
-              {artwork.featured ? 'Featured' : 'Feature'}
-            </button>
-            <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, isVisible: !artwork.isVisible })}
-              className={`text-xs px-2 py-1 rounded ${artwork.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
-              {artwork.isVisible ? 'Visible' : 'Hidden'}
-            </button>
-            <button onClick={() => { if (confirm('Delete this artwork?')) removeArtwork({ token, id: artwork._id as Id<"artworks"> }); }}
-              className="text-xs text-berry/60 active:text-berry">
-              Delete
-            </button>
+          <div key={artwork._id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {editingId === artwork._id ? (
+              <div className="p-4 space-y-3">
+                <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Editing artwork</p>
+                <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title"
+                  className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                <div className="flex gap-2">
+                  <input type="text" value={editMedium} onChange={(e) => setEditMedium(e.target.value)} placeholder="Medium"
+                    className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                  <input type="text" value={editYear} onChange={(e) => setEditYear(e.target.value)} placeholder="Year"
+                    className="w-20 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={editSeries} onChange={(e) => setEditSeries(e.target.value)} placeholder="Series"
+                    className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                  <input type="text" value={editDimensions} onChange={(e) => setEditDimensions(e.target.value)} placeholder="Dimensions"
+                    className="flex-1 min-w-0 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                </div>
+                <input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)"
+                  className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(artwork._id)} disabled={editSaving}
+                    className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
+                    {editSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="px-4 py-2 rounded-lg bg-parchment text-brown text-sm active:bg-parchment/70">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3">
+                {artwork.url && (
+                  <img src={artwork.url} alt={artwork.title} className="w-10 h-10 rounded object-cover flex-shrink-0 border border-brown/10" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className={`font-display font-semibold text-sm truncate ${artwork.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
+                    {artwork.title}
+                  </p>
+                  <p className="text-xs text-brown-lighter">
+                    {artwork.medium} · {artwork.year}
+                    {artwork.featured && ' · Featured'}
+                  </p>
+                </div>
+                <button onClick={() => startEdit(artwork)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70 flex-shrink-0">
+                  Edit
+                </button>
+                <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, featured: !artwork.featured })}
+                  className={`text-xs px-2 py-1 rounded flex-shrink-0 ${artwork.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
+                  {artwork.featured ? 'Featured' : 'Feature'}
+                </button>
+                <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, isVisible: !artwork.isVisible })}
+                  className={`text-xs px-2 py-1 rounded flex-shrink-0 ${artwork.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
+                  {artwork.isVisible ? 'Visible' : 'Hidden'}
+                </button>
+                <button onClick={() => { if (confirm('Delete this artwork?')) removeArtwork({ token, id: artwork._id as Id<"artworks"> }); }}
+                  className="text-xs text-berry/60 active:text-berry flex-shrink-0">
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {artworks?.length === 0 && (
