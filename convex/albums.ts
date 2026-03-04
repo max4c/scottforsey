@@ -61,13 +61,21 @@ export const update = mutation({
     order: v.optional(v.number()),
     gradientFrom: v.optional(v.string()),
     gradientTo: v.optional(v.string()),
+    coverStorageId: v.optional(v.id("_storage")),
+    clearCover: v.optional(v.boolean()),
   },
-  handler: async (ctx, { token, id, ...updates }) => {
+  handler: async (ctx, { token, id, clearCover, ...updates }) => {
     await validateSession(ctx, token);
     const filtered = Object.fromEntries(
       Object.entries(updates).filter(([, val]) => val !== undefined)
     );
-    await ctx.db.patch(id, filtered);
+    if (clearCover) {
+      const album = await ctx.db.get(id);
+      if (album?.coverStorageId) await ctx.storage.delete(album.coverStorageId);
+      await ctx.db.patch(id, { ...filtered, coverStorageId: undefined, coverUrl: undefined });
+    } else {
+      await ctx.db.patch(id, filtered);
+    }
   },
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -50,12 +50,15 @@ export function AdminPanel() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-brown">Admin</h1>
-        <button
-          onClick={() => { localStorage.removeItem(TOKEN_KEY); setToken(null); }}
-          className="text-sm text-brown-lighter active:text-brown"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-sm text-brown-lighter active:text-brown">← View site</a>
+          <button
+            onClick={() => { localStorage.removeItem(TOKEN_KEY); setToken(null); }}
+            className="text-sm text-brown-lighter active:text-brown"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <AlbumsSection token={token} />
@@ -117,6 +120,7 @@ function AlbumsSection({ token }: { token: string }) {
   const removeAlbum = useMutation(api.albums.remove);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
+  // Create form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -125,6 +129,14 @@ function AlbumsSection({ token }: { token: string }) {
   const [gradientTo, setGradientTo] = useState('#e76f51');
   const [uploading, setUploading] = useState(false);
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
+  const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
   useEffect(() => {
     if (!coverFile) { setCoverPreview(null); return; }
     const url = URL.createObjectURL(coverFile);
@@ -132,32 +144,37 @@ function AlbumsSection({ token }: { token: string }) {
     return () => URL.revokeObjectURL(url);
   }, [coverFile]);
 
+  useEffect(() => {
+    if (!editCoverFile) { setEditCoverPreview(null); return; }
+    const url = URL.createObjectURL(editCoverFile);
+    setEditCoverPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [editCoverFile]);
+
+  function startEdit(album: any) {
+    setEditingId(album._id);
+    setEditTitle(album.title);
+    setEditDescription(album.description ?? '');
+    setEditCoverFile(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditCoverFile(null);
+  }
+
   const handleCreate = async () => {
     if (!title.trim()) return;
     setUploading(true);
     try {
       let coverStorageId: Id<"_storage"> | undefined;
-      const file = coverFile;
-      if (file) {
+      if (coverFile) {
         const uploadUrl = await generateUploadUrl({ token });
-        const result = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        });
+        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': coverFile.type }, body: coverFile });
         const { storageId } = await result.json();
         coverStorageId = storageId;
       }
-
-      await createAlbum({
-        token,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        coverStorageId,
-        gradientFrom,
-        gradientTo,
-      });
-
+      await createAlbum({ token, title: title.trim(), description: description.trim() || undefined, coverStorageId, gradientFrom, gradientTo });
       setTitle('');
       setDescription('');
       setCoverFile(null);
@@ -170,90 +187,69 @@ function AlbumsSection({ token }: { token: string }) {
     }
   };
 
+  const handleSaveEdit = async (album: any) => {
+    setEditSaving(true);
+    try {
+      let coverStorageId: Id<"_storage"> | undefined;
+      if (editCoverFile) {
+        const uploadUrl = await generateUploadUrl({ token });
+        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': editCoverFile.type }, body: editCoverFile });
+        const { storageId } = await result.json();
+        coverStorageId = storageId;
+      }
+      await updateAlbum({
+        token,
+        id: album._id as Id<"albums">,
+        title: editTitle.trim() || undefined,
+        description: editDescription.trim() || undefined,
+        ...(coverStorageId ? { coverStorageId } : {}),
+      });
+      setEditingId(null);
+      setEditCoverFile(null);
+    } catch (err) {
+      console.error('Failed to save album:', err);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <section>
       <h2 className="font-display text-lg font-bold text-brown mb-4">Albums / Playlists</h2>
 
       {/* Create */}
       <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Album title"
-          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-        />
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description (optional)"
-          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-        />
-
-        {/* Gradient picker */}
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Album title"
+          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+        <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)"
+          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         <div className="space-y-2">
           <p className="text-xs text-brown-lighter">Cover gradient (used if no image)</p>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={gradientFrom}
-                onChange={(e) => setGradientFrom(e.target.value)}
-                className="w-9 h-9 rounded cursor-pointer border border-brown/20"
-                title="Start color"
-              />
+              <input type="color" value={gradientFrom} onChange={(e) => setGradientFrom(e.target.value)}
+                className="w-9 h-9 rounded cursor-pointer border border-brown/20" title="Start color" />
               <span className="text-xs text-brown-lighter">to</span>
-              <input
-                type="color"
-                value={gradientTo}
-                onChange={(e) => setGradientTo(e.target.value)}
-                className="w-9 h-9 rounded cursor-pointer border border-brown/20"
-                title="End color"
-              />
+              <input type="color" value={gradientTo} onChange={(e) => setGradientTo(e.target.value)}
+                className="w-9 h-9 rounded cursor-pointer border border-brown/20" title="End color" />
             </div>
-            {/* Live preview */}
             {!coverPreview && (
-              <div
-                className="w-12 h-12 rounded-lg shadow-sm flex-shrink-0"
-                style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
-              />
+              <div className="w-12 h-12 rounded-lg shadow-sm flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }} />
             )}
           </div>
         </div>
-
-        <FileButton
-          accept="image/*"
-          label="Or choose a cover image"
-          selectedName={coverFile?.name}
-          onChange={setCoverFile}
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-            </svg>
-          }
+        <FileButton accept="image/*" label="Or choose a cover image" selectedName={coverFile?.name} onChange={setCoverFile}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>}
         />
         {coverPreview && (
           <div className="flex items-start gap-3">
-            <img
-              src={coverPreview}
-              alt="Cover preview"
-              className="w-24 h-24 rounded-lg object-cover shadow-sm border border-brown/10"
-            />
-            <button
-              type="button"
-              onClick={() => setCoverFile(null)}
-              className="text-xs text-brown-lighter active:text-berry mt-1"
-            >
-              Remove
-            </button>
+            <img src={coverPreview} alt="Cover preview" className="w-24 h-24 rounded-lg object-cover shadow-sm border border-brown/10" />
+            <button type="button" onClick={() => setCoverFile(null)} className="text-xs text-brown-lighter active:text-berry mt-1">Remove</button>
           </div>
         )}
-        <button
-          onClick={handleCreate}
-          disabled={uploading || !title.trim()}
-          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50"
-        >
+        <button onClick={handleCreate} disabled={uploading || !title.trim()}
+          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Creating...' : 'Create Album'}
         </button>
       </div>
@@ -261,53 +257,73 @@ function AlbumsSection({ token }: { token: string }) {
       {/* List */}
       <div className="mt-4 space-y-2">
         {albums?.map((album) => (
-          <div key={album._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
-            <AlbumCover
-              coverUrl={album.coverUrl}
-              gradientFrom={(album as any).gradientFrom}
-              gradientTo={(album as any).gradientTo}
-              title={album.title}
-              size="sm"
-            />
-            <div className="flex-1 min-w-0">
-              <p className={`font-display font-semibold text-sm truncate ${album.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
-                {album.title}
-              </p>
-              {album.description && (
-                <p className="text-xs text-brown-lighter truncate">{album.description}</p>
-              )}
-            </div>
-            {/* Gradient editors for existing albums */}
-            {!album.coverUrl && (
-              <div className="flex items-center gap-1">
-                <input
-                  type="color"
-                  defaultValue={(album as any).gradientFrom ?? '#f4a261'}
-                  onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientFrom: e.target.value })}
-                  className="w-7 h-7 rounded cursor-pointer border border-brown/20"
-                  title="Start color"
-                />
-                <input
-                  type="color"
-                  defaultValue={(album as any).gradientTo ?? '#e76f51'}
-                  onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientTo: e.target.value })}
-                  className="w-7 h-7 rounded cursor-pointer border border-brown/20"
-                  title="End color"
-                />
+          <div key={album._id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+            {editingId === album._id ? (
+              /* Edit form */
+              <div className="p-4 space-y-3">
+                <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Editing album</p>
+                <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Album title"
+                  className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                <input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Description (optional)"
+                  className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+                <div className="space-y-1">
+                  <p className="text-xs text-brown-lighter">Change cover image</p>
+                  <FileButton accept="image/*" label="Choose new cover" selectedName={editCoverFile?.name} onChange={setEditCoverFile}
+                    icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>}
+                  />
+                  {editCoverPreview && (
+                    <img src={editCoverPreview} alt="New cover" className="w-20 h-20 rounded-lg object-cover shadow-sm border border-brown/10 mt-2" />
+                  )}
+                  {album.coverUrl && !editCoverFile && (
+                    <div className="flex items-center gap-3 mt-2">
+                      <img src={album.coverUrl} alt="Current cover" className="w-12 h-12 rounded-lg object-cover shadow-sm border border-brown/10" />
+                      <button type="button" onClick={() => updateAlbum({ token, id: album._id as Id<"albums">, clearCover: true })}
+                        className="text-xs text-berry/60 active:text-berry">Remove current cover</button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleSaveEdit(album)} disabled={editSaving}
+                    className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
+                    {editSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={cancelEdit} className="px-4 py-2 rounded-lg bg-parchment text-brown text-sm active:bg-parchment/70">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              /* Normal row */
+              <div className="flex items-center gap-3 px-4 py-3">
+                <AlbumCover coverUrl={album.coverUrl} gradientFrom={(album as any).gradientFrom} gradientTo={(album as any).gradientTo}
+                  title={album.title} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className={`font-display font-semibold text-sm truncate ${album.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
+                    {album.title}
+                  </p>
+                  {album.description && <p className="text-xs text-brown-lighter truncate">{album.description}</p>}
+                </div>
+                {!album.coverUrl && (
+                  <div className="flex items-center gap-1">
+                    <input type="color" defaultValue={(album as any).gradientFrom ?? '#f4a261'}
+                      onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientFrom: e.target.value })}
+                      className="w-7 h-7 rounded cursor-pointer border border-brown/20" title="Start color" />
+                    <input type="color" defaultValue={(album as any).gradientTo ?? '#e76f51'}
+                      onChange={(e) => updateAlbum({ token, id: album._id as Id<"albums">, gradientTo: e.target.value })}
+                      className="w-7 h-7 rounded cursor-pointer border border-brown/20" title="End color" />
+                  </div>
+                )}
+                <button onClick={() => startEdit(album)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">
+                  Edit
+                </button>
+                <button onClick={() => updateAlbum({ token, id: album._id as Id<"albums">, isVisible: !album.isVisible })}
+                  className={`text-xs px-2 py-1 rounded ${album.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
+                  {album.isVisible ? 'Visible' : 'Hidden'}
+                </button>
+                <button onClick={() => { if (confirm(`Delete "${album.title}"? Songs will be unassigned.`)) removeAlbum({ token, id: album._id as Id<"albums"> }); }}
+                  className="text-xs text-berry/60 active:text-berry">
+                  Delete
+                </button>
               </div>
             )}
-            <button
-              onClick={() => updateAlbum({ token, id: album._id as Id<"albums">, isVisible: !album.isVisible })}
-              className={`text-xs px-2 py-1 rounded ${album.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}
-            >
-              {album.isVisible ? 'Visible' : 'Hidden'}
-            </button>
-            <button
-              onClick={() => { if (confirm(`Delete "${album.title}"? Songs will be unassigned.`)) removeAlbum({ token, id: album._id as Id<"albums"> }); }}
-              className="text-xs text-berry/60 active:text-berry"
-            >
-              Delete
-            </button>
           </div>
         ))}
         {albums?.length === 0 && (
@@ -318,6 +334,12 @@ function AlbumsSection({ token }: { token: string }) {
   );
 }
 
+interface BatchFile {
+  file: File;
+  title: string;
+  albumId: string;
+}
+
 function MusicSection({ token }: { token: string }) {
   const songs = useQuery(api.songs.listAll, { token });
   const albums = useQuery(api.albums.listAll, { token });
@@ -326,10 +348,22 @@ function MusicSection({ token }: { token: string }) {
   const removeSong = useMutation(api.songs.remove);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
+  // Single upload
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [newSongAlbumId, setNewSongAlbumId] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  // Batch upload
+  const [batchFiles, setBatchFiles] = useState<BatchFile[]>([]);
+  const [batchUploading, setBatchUploading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const batchInputId = useId();
+
+  // Song editing
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
+  const [editingSongTitle, setEditingSongTitle] = useState('');
+
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -348,30 +382,25 @@ function MusicSection({ token }: { token: string }) {
     setPlayingId(songId);
   }
 
+  function handleBatchSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    setBatchFiles(files.map((f) => ({
+      file: f,
+      title: f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+      albumId: '',
+    })));
+    e.target.value = '';
+  }
+
   const handleUpload = async () => {
     if (!audioFile || !title.trim()) return;
-
     setUploading(true);
     try {
       const duration = await getAudioDuration(audioFile);
-
       const uploadUrl = await generateUploadUrl({ token });
-      const result = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': audioFile.type },
-        body: audioFile,
-      });
+      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': audioFile.type }, body: audioFile });
       const { storageId } = await result.json();
-
-      await createSong({
-        token,
-        title: title.trim(),
-        storageId,
-        duration: Math.round(duration),
-        featured: false,
-        albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined,
-      });
-
+      await createSong({ token, title: title.trim(), storageId, duration: Math.round(duration), featured: false, albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined });
       setTitle('');
       setNewSongAlbumId('');
       setAudioFile(null);
@@ -382,6 +411,27 @@ function MusicSection({ token }: { token: string }) {
     }
   };
 
+  const handleBatchUpload = async () => {
+    if (batchFiles.length === 0) return;
+    setBatchUploading(true);
+    setBatchProgress(0);
+    for (let i = 0; i < batchFiles.length; i++) {
+      const { file, title: t, albumId } = batchFiles[i];
+      try {
+        const duration = await getAudioDuration(file);
+        const uploadUrl = await generateUploadUrl({ token });
+        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+        const { storageId } = await result.json();
+        await createSong({ token, title: t.trim() || file.name, storageId, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined });
+      } catch (err) {
+        console.error(`Failed to upload ${file.name}:`, err);
+      }
+      setBatchProgress(i + 1);
+    }
+    setBatchFiles([]);
+    setBatchUploading(false);
+  };
+
   function handleAlbumChange(songId: string, albumId: string) {
     if (albumId === '') {
       updateSong({ token, id: songId as Id<"songs">, clearAlbum: true });
@@ -390,108 +440,167 @@ function MusicSection({ token }: { token: string }) {
     }
   }
 
+  function startRenameSong(song: any) {
+    setEditingSongId(song._id);
+    setEditingSongTitle(song.title);
+  }
+
+  async function saveRenameSong(songId: string) {
+    if (editingSongTitle.trim()) {
+      await updateSong({ token, id: songId as Id<"songs">, title: editingSongTitle.trim() });
+    }
+    setEditingSongId(null);
+  }
+
   return (
     <section>
       <h2 className="font-display text-lg font-bold text-brown mb-4">Music</h2>
 
-      {/* Upload */}
+      {/* Single Upload */}
       <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
+        <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Add single song</p>
         <FileButton
           accept=".m4a,.mp3,.wav,.aac,.flac,.ogg,audio/*"
           label="Choose Audio File"
           selectedName={audioFile?.name}
           onChange={setAudioFile}
           onClear={() => setAudioFile(null)}
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-            </svg>
-          }
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>}
         />
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Song title"
-          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-        />
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song title"
+          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         {albums && albums.length > 0 && (
-          <select
-            value={newSongAlbumId}
-            onChange={(e) => setNewSongAlbumId(e.target.value)}
-            className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white"
-          >
+          <select value={newSongAlbumId} onChange={(e) => setNewSongAlbumId(e.target.value)}
+            className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white">
             <option value="">No album</option>
-            {albums.map((a) => (
-              <option key={a._id} value={a._id}>{a.title}</option>
-            ))}
+            {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
           </select>
         )}
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50"
-        >
+        <button onClick={handleUpload} disabled={uploading || !audioFile || !title.trim()}
+          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Uploading...' : 'Add Song'}
         </button>
       </div>
 
-      {/* List */}
+      {/* Batch Upload */}
+      <div className="bg-white rounded-lg p-4 shadow-sm space-y-3 mt-3">
+        <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Batch upload multiple songs</p>
+        <div>
+          <input
+            id={batchInputId}
+            type="file"
+            accept=".m4a,.mp3,.wav,.aac,.flac,.ogg,audio/*"
+            multiple
+            className="sr-only"
+            onChange={handleBatchSelect}
+          />
+          <label
+            htmlFor={batchInputId}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-brown/25 bg-parchment/40 text-brown-light text-sm font-semibold cursor-pointer active:bg-parchment transition-colors hover:border-sunset/50 hover:text-brown"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60">
+              <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z" />
+            </svg>
+            Select multiple audio files
+          </label>
+        </div>
+        {batchFiles.length > 0 && (
+          <div className="space-y-2">
+            {batchFiles.map((bf, i) => (
+              <div key={i} className="flex items-center gap-2 bg-parchment/30 rounded-lg px-3 py-2">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <input
+                    type="text"
+                    value={bf.title}
+                    onChange={(e) => setBatchFiles((prev) => prev.map((f, j) => j === i ? { ...f, title: e.target.value } : f))}
+                    className="w-full px-2 py-1 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white"
+                  />
+                  <p className="text-xs text-brown-lighter truncate">{bf.file.name}</p>
+                </div>
+                {albums && albums.length > 0 && (
+                  <select
+                    value={bf.albumId}
+                    onChange={(e) => setBatchFiles((prev) => prev.map((f, j) => j === i ? { ...f, albumId: e.target.value } : f))}
+                    className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]"
+                  >
+                    <option value="">No album</option>
+                    {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
+                  </select>
+                )}
+                <button onClick={() => setBatchFiles((prev) => prev.filter((_, j) => j !== i))}
+                  className="text-xs text-berry/60 active:text-berry flex-shrink-0">✕</button>
+              </div>
+            ))}
+            <div className="flex items-center gap-3">
+              <button onClick={handleBatchUpload} disabled={batchUploading}
+                className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
+                {batchUploading ? `Uploading ${batchProgress}/${batchFiles.length}...` : `Upload ${batchFiles.length} songs`}
+              </button>
+              <button onClick={() => setBatchFiles([])} className="text-sm text-brown-lighter active:text-brown">Clear</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Song List */}
       <div className="mt-4 space-y-2">
         {songs?.map((song) => (
           <div key={song._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
-            <button
-              onClick={() => togglePlay(song._id, song.url)}
+            <button onClick={() => togglePlay(song._id, song.url)}
               className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-parchment/60 active:bg-sunset/20"
-              aria-label={playingId === song._id ? 'Pause' : 'Play'}
-            >
+              aria-label={playingId === song._id ? 'Pause' : 'Play'}>
               {playingId === song._id ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-sunset">
-                  <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-sunset"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter"><path d="M8 5v14l11-7z" /></svg>
               )}
             </button>
             <div className="flex-1 min-w-0">
-              <p className={`font-display font-semibold text-sm truncate ${song.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
-                {song.title}
-              </p>
+              {editingSongId === song._id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editingSongTitle}
+                    onChange={(e) => setEditingSongTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveRenameSong(song._id); if (e.key === 'Escape') setEditingSongId(null); }}
+                    className="flex-1 px-2 py-1 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
+                    autoFocus
+                  />
+                  <button onClick={() => saveRenameSong(song._id)} className="text-xs text-sunset font-semibold">Save</button>
+                  <button onClick={() => setEditingSongId(null)} className="text-xs text-brown-lighter">✕</button>
+                </div>
+              ) : (
+                <p className={`font-display font-semibold text-sm truncate ${song.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
+                  {song.title}
+                </p>
+              )}
               <p className="text-xs text-brown-lighter">
                 {formatDuration(song.duration)}
                 {song.featured && ' · Featured'}
               </p>
             </div>
             {albums && albums.length > 0 && (
-              <select
-                value={(song as any).albumId ?? ''}
-                onChange={(e) => handleAlbumChange(song._id, e.target.value)}
-                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]"
-              >
+              <select value={(song as any).albumId ?? ''} onChange={(e) => handleAlbumChange(song._id, e.target.value)}
+                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]">
                 <option value="">No album</option>
-                {albums.map((a) => (
-                  <option key={a._id} value={a._id}>{a.title}</option>
-                ))}
+                {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
               </select>
             )}
-            <button
-              onClick={() => updateSong({ token, id: song._id as Id<"songs">, featured: !song.featured })}
-              className={`text-xs px-2 py-1 rounded ${song.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}
-            >
+            {editingSongId !== song._id && (
+              <button onClick={() => startRenameSong(song)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">
+                Rename
+              </button>
+            )}
+            <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, featured: !song.featured })}
+              className={`text-xs px-2 py-1 rounded ${song.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
               {song.featured ? 'Featured' : 'Feature'}
             </button>
-            <button
-              onClick={() => updateSong({ token, id: song._id as Id<"songs">, isVisible: !song.isVisible })}
-              className={`text-xs px-2 py-1 rounded ${song.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}
-            >
+            <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, isVisible: !song.isVisible })}
+              className={`text-xs px-2 py-1 rounded ${song.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
               {song.isVisible ? 'Visible' : 'Hidden'}
             </button>
-            <button
-              onClick={() => { if (confirm('Delete this song?')) removeSong({ token, id: song._id as Id<"songs"> }); }}
-              className="text-xs text-berry/60 active:text-berry"
-            >
+            <button onClick={() => { if (confirm('Delete this song?')) removeSong({ token, id: song._id as Id<"songs"> }); }}
+              className="text-xs text-berry/60 active:text-berry">
               Delete
             </button>
           </div>
@@ -535,19 +644,11 @@ function ArtSection({ token }: { token: string }) {
     setUploading(true);
     try {
       const { width, height } = await getImageDimensions(file);
-
       const uploadUrl = await generateUploadUrl({ token });
-      const result = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
+      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
       const { storageId } = await result.json();
-
       await createArtwork({
-        token,
-        title: title.trim(),
-        storageId,
+        token, title: title.trim(), storageId,
         medium: medium.trim(),
         year: parseInt(year) || new Date().getFullYear(),
         dimensions: dimensions.trim() || `${width}x${height}`,
@@ -556,13 +657,8 @@ function ArtSection({ token }: { token: string }) {
         aspectRatio: width / height,
         description: description.trim() || undefined,
       });
-
-      setTitle('');
-      setMedium('');
-      setDimensions('');
-      setSeries('');
-      setDescription('');
-      setArtFile(null); // preview clears via useEffect
+      setTitle(''); setMedium(''); setDimensions(''); setSeries(''); setDescription('');
+      setArtFile(null);
     } catch (err) {
       console.error('Upload failed:', err);
     } finally {
@@ -574,91 +670,38 @@ function ArtSection({ token }: { token: string }) {
     <section>
       <h2 className="font-display text-lg font-bold text-brown mb-4">Art</h2>
 
-      {/* Upload */}
       <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
-        <FileButton
-          accept="image/*"
-          label="Choose Image"
-          selectedName={artFile?.name}
-          onChange={setArtFile}
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-            </svg>
-          }
+        <FileButton accept="image/*" label="Choose Image" selectedName={artFile?.name} onChange={setArtFile}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" /></svg>}
         />
         {artPreview && (
           <div className="flex items-start gap-3">
-            <img
-              src={artPreview}
-              alt="Artwork preview"
-              className="w-24 h-24 rounded-lg object-cover shadow-sm border border-brown/10"
-            />
-            <button
-              type="button"
-              onClick={() => setArtFile(null)}
-              className="text-xs text-brown-lighter active:text-berry mt-1"
-            >
-              Remove
-            </button>
+            <img src={artPreview} alt="Artwork preview" className="w-24 h-24 rounded-lg object-cover shadow-sm border border-brown/10" />
+            <button type="button" onClick={() => setArtFile(null)} className="text-xs text-brown-lighter active:text-berry mt-1">Remove</button>
           </div>
         )}
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title"
-          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-        />
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
+          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={medium}
-            onChange={(e) => setMedium(e.target.value)}
-            placeholder="Medium (e.g. Pixel Art)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-          />
-          <input
-            type="text"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            placeholder="Year"
-            className="w-20 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-          />
+          <input type="text" value={medium} onChange={(e) => setMedium(e.target.value)} placeholder="Medium (e.g. Pixel Art)"
+            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+          <input type="text" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Year"
+            className="w-20 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         </div>
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={series}
-            onChange={(e) => setSeries(e.target.value)}
-            placeholder="Series (optional)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-          />
-          <input
-            type="text"
-            value={dimensions}
-            onChange={(e) => setDimensions(e.target.value)}
-            placeholder="Dimensions (auto)"
-            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-          />
+          <input type="text" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="Series (optional)"
+            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+          <input type="text" value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="Dimensions (auto)"
+            className="flex-1 px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
         </div>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description (optional)"
-          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-        />
-        <button
-          onClick={handleUpload}
-          disabled={uploading}
-          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50"
-        >
+        <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)"
+          className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
+        <button onClick={handleUpload} disabled={uploading}
+          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Uploading...' : 'Add Artwork'}
         </button>
       </div>
 
-      {/* List */}
       <div className="mt-4 space-y-2">
         {artworks?.map((artwork) => (
           <div key={artwork._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
@@ -671,22 +714,16 @@ function ArtSection({ token }: { token: string }) {
                 {artwork.featured && ' · Featured'}
               </p>
             </div>
-            <button
-              onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, featured: !artwork.featured })}
-              className={`text-xs px-2 py-1 rounded ${artwork.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}
-            >
+            <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, featured: !artwork.featured })}
+              className={`text-xs px-2 py-1 rounded ${artwork.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
               {artwork.featured ? 'Featured' : 'Feature'}
             </button>
-            <button
-              onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, isVisible: !artwork.isVisible })}
-              className={`text-xs px-2 py-1 rounded ${artwork.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}
-            >
+            <button onClick={() => updateArtwork({ token, id: artwork._id as Id<"artworks">, isVisible: !artwork.isVisible })}
+              className={`text-xs px-2 py-1 rounded ${artwork.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
               {artwork.isVisible ? 'Visible' : 'Hidden'}
             </button>
-            <button
-              onClick={() => { if (confirm('Delete this artwork?')) removeArtwork({ token, id: artwork._id as Id<"artworks"> }); }}
-              className="text-xs text-berry/60 active:text-berry"
-            >
+            <button onClick={() => { if (confirm('Delete this artwork?')) removeArtwork({ token, id: artwork._id as Id<"artworks"> }); }}
+              className="text-xs text-berry/60 active:text-berry">
               Delete
             </button>
           </div>

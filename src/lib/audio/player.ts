@@ -105,8 +105,9 @@ class AudioPlayer {
         },
         onloaderror: () => {
           this.destroyHowl();
-          this._state = 'playing';
-          this.startTimeTracking();
+          this._state = 'paused';
+          this._currentTime = 0;
+          this.stopTimeTracking();
           this.notify();
         },
       });
