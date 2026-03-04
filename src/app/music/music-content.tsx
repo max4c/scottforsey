@@ -18,6 +18,14 @@ export function MusicPageContent() {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  const filteredSongs = useMemo(() => {
+    if (!songs) return [];
+    const q = search.trim().toLowerCase();
+    return q
+      ? (songs as SongData[]).filter(s => s.title.toLowerCase().includes(q))
+      : (songs as SongData[]);
+  }, [songs, search]);
+
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;
   }
@@ -104,13 +112,6 @@ export function MusicPageContent() {
       </>
     );
   }
-
-  const filteredSongs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q
-      ? (songs as SongData[]).filter(s => s.title.toLowerCase().includes(q))
-      : (songs as SongData[]);
-  }, [songs, search]);
 
   // Grid view
   return (

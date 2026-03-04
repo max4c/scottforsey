@@ -14,9 +14,12 @@ function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+type AdminTab = 'music' | 'albums' | 'art';
+
 export function AdminPanel() {
   const [token, setToken] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  const [activeTab, setActiveTab] = useState<AdminTab>('music');
   const checkSession = useAction(api.admin.checkSession);
 
   useEffect(() => {
@@ -46,9 +49,15 @@ export function AdminPanel() {
     return <LoginForm onLogin={(t) => { localStorage.setItem(TOKEN_KEY, t); setToken(t); }} />;
   }
 
+  const tabs: { id: AdminTab; label: string }[] = [
+    { id: 'music', label: 'Music' },
+    { id: 'albums', label: 'Albums' },
+    { id: 'art', label: 'Art' },
+  ];
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
-      <div className="flex items-center justify-between">
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-bold text-brown">Admin</h1>
         <div className="flex items-center gap-4">
           <a href="/" className="text-sm text-brown-lighter active:text-brown">← View site</a>
@@ -61,9 +70,25 @@ export function AdminPanel() {
         </div>
       </div>
 
-      <AlbumsSection token={token} />
-      <MusicSection token={token} />
-      <ArtSection token={token} />
+      <div className="flex gap-1 mb-6 bg-parchment/60 rounded-xl p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? 'bg-white text-brown shadow-sm'
+                : 'text-brown-lighter active:text-brown'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'albums' && <AlbumsSection token={token} />}
+      {activeTab === 'music' && <MusicSection token={token} />}
+      {activeTab === 'art' && <ArtSection token={token} />}
     </div>
   );
 }
