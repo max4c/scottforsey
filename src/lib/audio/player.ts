@@ -201,6 +201,46 @@ class AudioPlayer {
     this.notify();
   }
 
+  playNext(track: Track) {
+    const at = this._queueIndex + 1;
+    this._queue.splice(at, 0, track);
+    this._originalQueue = [...this._queue];
+    if (this._state === 'idle') {
+      this._queueIndex = 0;
+      this.play(this._queue[0]);
+    }
+    this.notify();
+  }
+
+  removeFromQueue(index: number) {
+    if (index < 0 || index >= this._queue.length) return;
+    if (index === this._queueIndex) return; // can't remove currently playing
+    this._queue.splice(index, 1);
+    this._originalQueue = [...this._queue];
+    if (index < this._queueIndex) this._queueIndex--;
+    this.notify();
+  }
+
+  playAt(index: number) {
+    if (index < 0 || index >= this._queue.length) return;
+    this._queueIndex = index;
+    this.play(this._queue[index]);
+  }
+
+  clearQueue() {
+    const current = this._currentTrack;
+    if (current && this._state !== 'idle') {
+      this._queue = [current];
+      this._originalQueue = [current];
+      this._queueIndex = 0;
+    } else {
+      this._queue = [];
+      this._originalQueue = [];
+      this._queueIndex = -1;
+    }
+    this.notify();
+  }
+
   next() {
     if (this._repeat === 'one') {
       this.seek(0);

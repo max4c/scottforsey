@@ -11,20 +11,43 @@ import { formatDuration } from '@/lib/types';
 import type { SongData, AlbumData } from '@/lib/types';
 import { useState, useMemo } from 'react';
 
+type SortOption = 'title-asc' | 'title-desc' | 'duration-asc' | 'duration-desc';
+
 export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [albumFilter, setAlbumFilter] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('title-asc');
 
   const filteredSongs = useMemo(() => {
     if (!songs) return [];
+    let list = songs as SongData[];
+
+    // Album filter
+    if (albumFilter === '__none__') {
+      list = list.filter(s => !s.albumId);
+    } else if (albumFilter) {
+      list = list.filter(s => s.albumId === albumFilter);
+    }
+
+    // Search
     const q = search.trim().toLowerCase();
-    return q
-      ? (songs as SongData[]).filter(s => s.title.toLowerCase().includes(q))
-      : (songs as SongData[]);
-  }, [songs, search]);
+    if (q) list = list.filter(s => s.title.toLowerCase().includes(q));
+
+    // Sort
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'title-asc') return a.title.localeCompare(b.title);
+      if (sortBy === 'title-desc') return b.title.localeCompare(a.title);
+      if (sortBy === 'duration-asc') return a.duration - b.duration;
+      if (sortBy === 'duration-desc') return b.duration - a.duration;
+      return 0;
+    });
+
+    return list;
+  }, [songs, search, albumFilter, sortBy]);
 
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;
@@ -160,6 +183,36 @@ export function MusicPageContent() {
       {/* All Tracks */}
       <div>
         <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>
+
+        {/* Filter + Sort row */}
+        {albums.length > 0 && (
+          <div className="flex gap-2 mb-3">
+            <select
+              value={albumFilter}
+              onChange={e => setAlbumFilter(e.target.value)}
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-brown/20 bg-white text-brown text-sm focus:outline-none focus:border-sunset appearance-none"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238B7355'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            >
+              <option value="">All Albums</option>
+              {(albums as AlbumData[]).map(a => (
+                <option key={a._id} value={a._id}>{a.title}</option>
+              ))}
+              <option value="__none__">No Album</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as SortOption)}
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-brown/20 bg-white text-brown text-sm focus:outline-none focus:border-sunset appearance-none"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238B7355'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            >
+              <option value="title-asc">Title A→Z</option>
+              <option value="title-desc">Title Z→A</option>
+              <option value="duration-asc">Shortest first</option>
+              <option value="duration-desc">Longest first</option>
+            </select>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-3 gap-3">
           <p className="text-brown-light text-sm whitespace-nowrap">{songs.length} tracks · {formatDuration(totalDuration)}</p>
           <div className="flex gap-2 flex-shrink-0">
@@ -198,7 +251,7 @@ export function MusicPageContent() {
           )}
         </div>
         {filteredSongs.length === 0 ? (
-          <p className="text-sm text-brown-lighter text-center py-8">No songs match "{search}"</p>
+          <p className="text-sm text-brown-lighter text-center py-8">No songs match your filters</p>
         ) : (
           <TrackList songs={filteredSongs} />
         )}

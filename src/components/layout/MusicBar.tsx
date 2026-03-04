@@ -2,6 +2,7 @@
 
 import { useAudioPlayer } from '@/lib/audio/context';
 import { formatDuration } from '@/lib/mock-data';
+import { QueuePanel } from '@/components/music/QueuePanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef, useState, useCallback } from 'react';
 
@@ -96,6 +97,9 @@ export function MusicBar() {
     volume,
     shuffle,
     repeat,
+    queue,
+    queueIndex,
+    showQueue,
     togglePlayPause,
     next,
     previous,
@@ -103,12 +107,17 @@ export function MusicBar() {
     setVolume,
     toggleShuffle,
     toggleRepeat,
+    setShowQueue,
   } = useAudioPlayer();
+
+  const upNextCount = queue.length - queueIndex - 1;
 
   if (state === 'idle' || !currentTrack) return null;
 
   return (
-    <AnimatePresence>
+    <>
+      <QueuePanel />
+      <AnimatePresence>
       <motion.div
         key="musicbar"
         initial={{ y: 80 }}
@@ -199,6 +208,24 @@ export function MusicBar() {
             )}
           </button>
 
+          {/* Queue button */}
+          <button
+            onClick={() => setShowQueue(!showQueue)}
+            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              showQueue ? 'text-sunset' : 'text-brown-lighter active:text-brown'
+            }`}
+            aria-label="Queue"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
+            </svg>
+            {upNextCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-sunset text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {upNextCount > 9 ? '9+' : upNextCount}
+              </span>
+            )}
+          </button>
+
           {/* Volume — desktop only */}
           <div className="hidden md:flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brown-lighter flex-shrink-0">
@@ -220,5 +247,6 @@ export function MusicBar() {
         </div>
       </motion.div>
     </AnimatePresence>
+    </>
   );
 }
