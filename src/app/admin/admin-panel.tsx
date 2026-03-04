@@ -385,6 +385,9 @@ function MusicSection({ token }: { token: string }) {
   const [batchProgress, setBatchProgress] = useState(0);
   const batchInputId = useId();
 
+  // Song search
+  const [songSearch, setSongSearch] = useState('');
+
   // Song editing
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [editingSongTitle, setEditingSongTitle] = useState('');
@@ -568,8 +571,30 @@ function MusicSection({ token }: { token: string }) {
       </div>
 
       {/* Song List */}
-      <div className="mt-4 space-y-2">
-        {songs?.map((song) => (
+      <div className="mt-4">
+        <div className="relative mb-3">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-lighter pointer-events-none">
+            <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg>
+          <input
+            type="text"
+            value={songSearch}
+            onChange={(e) => setSongSearch(e.target.value)}
+            placeholder={`Search ${songs?.length ?? ''} songs...`}
+            className="w-full pl-8 pr-8 py-2 rounded-lg border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white"
+          />
+          {songSearch && (
+            <button onClick={() => setSongSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-lighter active:text-brown">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <div className="space-y-2">
+        {songs?.filter(s => !songSearch.trim() || s.title.toLowerCase().includes(songSearch.trim().toLowerCase())).map((song) => (
           <div key={song._id} className="bg-white rounded-lg px-3 py-2.5 shadow-sm space-y-2">
             {/* Row 1: play + title */}
             <div className="flex items-center gap-2.5">
@@ -632,6 +657,7 @@ function MusicSection({ token }: { token: string }) {
         {songs?.length === 0 && (
           <p className="text-sm text-brown-lighter py-4 text-center">No songs yet.</p>
         )}
+        </div>
       </div>
     </section>
   );
