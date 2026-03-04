@@ -98,13 +98,22 @@ export function MusicPageContent() {
                 {albumSongs.length} tracks · {formatDuration(albumDuration)}
               </p>
             </div>
-            <button
-              onClick={() => { const tracks = albumSongs.map(s => songToTrack(s)); playQueue(tracks, 0); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80 flex-shrink-0"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-              Play
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => { const tracks = albumSongs.map(s => songToTrack(s)); if (shuffle) toggleShuffle(); playQueue(tracks, 0); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                Play
+              </button>
+              <button
+                onClick={() => { const tracks = albumSongs.map(s => songToTrack(s)); if (!shuffle) toggleShuffle(); playQueue(tracks, 0); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
+                Shuffle
+              </button>
+            </div>
           </div>
         )}
 
@@ -116,20 +125,6 @@ export function MusicPageContent() {
   // Grid view
   return (
     <>
-      <div className="flex items-center justify-between mb-6 gap-3">
-        <p className="text-brown-light text-sm whitespace-nowrap">{songs.length} tracks · {formatDuration(totalDuration)}</p>
-        <div className="flex gap-2 flex-shrink-0">
-          <Button onClick={handlePlayAll} size="sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="sm:mr-1.5"><path d="M8 5v14l11-7z" /></svg>
-            <span className="hidden sm:inline">Play All</span>
-          </Button>
-          <Button onClick={handleShuffle} size="sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="sm:mr-1.5"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
-            <span className="hidden sm:inline">Shuffle</span>
-          </Button>
-        </div>
-      </div>
-
       {/* Album grid */}
       {albums.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
@@ -161,7 +156,19 @@ export function MusicPageContent() {
 
       {/* All Tracks */}
       <div>
-        <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <p className="text-brown-light text-sm whitespace-nowrap">{songs.length} tracks · {formatDuration(totalDuration)}</p>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button onClick={handlePlayAll} size="sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="sm:mr-1.5"><path d="M8 5v14l11-7z" /></svg>
+              <span className="hidden sm:inline">Play All</span>
+            </Button>
+            <Button onClick={handleShuffle} size="sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="sm:mr-1.5"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
+              <span className="hidden sm:inline">Shuffle</span>
+            </Button>
+          </div>
+        </div>
         <div className="relative mb-4">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
             className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-lighter pointer-events-none">
