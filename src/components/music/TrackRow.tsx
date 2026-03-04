@@ -15,7 +15,7 @@ export function songToTrack(song: SongData): Track {
   return {
     id: song._id,
     title: song.title,
-    audioUrl: song.url ? `/api/audio/${song._id}` : null,
+    audioUrl: song.url ?? null,
     duration: song.duration,
   };
 }
