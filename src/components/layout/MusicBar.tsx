@@ -3,6 +3,7 @@
 import { useAudioPlayer } from '@/lib/audio/context';
 import { formatDuration } from '@/lib/mock-data';
 import { QueuePanel } from '@/components/music/QueuePanel';
+import { FullscreenPlayer } from '@/components/music/FullscreenPlayer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef, useState, useCallback } from 'react';
 
@@ -111,12 +112,16 @@ export function MusicBar() {
   } = useAudioPlayer();
 
   const upNextCount = queue.length - queueIndex - 1;
+  const [showFullPlayer, setShowFullPlayer] = useState(false);
 
   if (state === 'idle' || !currentTrack) return null;
 
   return (
     <>
       <QueuePanel />
+      <AnimatePresence>
+        {showFullPlayer && <FullscreenPlayer onClose={() => setShowFullPlayer(false)} />}
+      </AnimatePresence>
       <AnimatePresence>
       <motion.div
         key="musicbar"
@@ -132,9 +137,17 @@ export function MusicBar() {
         </div>
 
         <div className="max-w-6xl mx-auto px-3 h-14 flex items-center gap-2">
-          {/* Track info */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-9 h-9 rounded flex-shrink-0 bg-gradient-to-br from-sky via-sunset to-berry" />
+          {/* Track info — tap to open full player */}
+          <button
+            onClick={() => setShowFullPlayer(true)}
+            className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+            aria-label="Open player"
+          >
+            <div className="w-9 h-9 rounded flex-shrink-0 overflow-hidden bg-gradient-to-br from-sky via-sunset to-berry">
+              {currentTrack.coverUrl && (
+                <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+              )}
+            </div>
             <div className="min-w-0">
               <p className="font-display font-semibold text-sm text-brown truncate">
                 {currentTrack.title}
@@ -143,7 +156,7 @@ export function MusicBar() {
                 {formatDuration(currentTime)} / {formatDuration(duration)}
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Shuffle */}
           <button

@@ -82,13 +82,13 @@ export default function AlbumPage() {
   const albumDuration = albumSongs.reduce((acc, s) => acc + s.duration, 0);
 
   function handlePlay() {
-    const tracks = albumSongs.map(s => songToTrack(s));
+    const tracks = albumSongs.map(s => songToTrack(s, album));
     if (shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
 
   function handleShuffle() {
-    const tracks = albumSongs.map(s => songToTrack(s));
+    const tracks = albumSongs.map(s => songToTrack(s, album));
     if (!shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
@@ -140,7 +140,7 @@ export default function AlbumPage() {
         </div>
       </div>
 
-      <TrackList songs={albumSongs} />
+      <TrackList songs={albumSongs} album={album} />
     </div>
   );
 }

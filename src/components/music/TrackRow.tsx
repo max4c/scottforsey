@@ -5,30 +5,37 @@ import { formatDuration, SongData } from '@/lib/types';
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 
+type AlbumMeta = { coverUrl?: string | null; gradientFrom?: string; gradientTo?: string; title: string } | null | undefined;
+
 interface TrackRowProps {
   song: SongData;
   allTracks: Track[];
   trackIndex: number;
   index?: number;
+  album?: AlbumMeta;
 }
 
-export function songToTrack(song: SongData): Track {
+export function songToTrack(song: SongData, album?: AlbumMeta): Track {
   return {
     id: song._id,
     title: song.title,
     audioUrl: song.url ?? null,
     duration: song.duration,
+    coverUrl: album?.coverUrl ?? null,
+    gradientFrom: album?.gradientFrom,
+    gradientTo: album?.gradientTo,
+    albumTitle: album?.title,
   };
 }
 
-export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowProps) {
+export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: TrackRowProps) {
   const { state, currentTrack, play, playQueue, togglePlayPause, addToQueue, playNext } = useAudioPlayer();
   const isCurrentTrack = currentTrack?.id === song._id;
   const isPlaying = isCurrentTrack && state === 'playing';
   const isNew = song._creationTime != null && Date.now() - song._creationTime < 30 * 24 * 60 * 60 * 1000;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const track = songToTrack(song);
+  const track = songToTrack(song, album);
 
   useEffect(() => {
     if (!menuOpen) return;

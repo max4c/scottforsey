@@ -3,6 +3,10 @@ export interface Track {
   title: string;
   audioUrl: string | null;
   duration: number;
+  coverUrl?: string | null;
+  gradientFrom?: string;
+  gradientTo?: string;
+  albumTitle?: string;
 }
 
 export type PlayerState = 'idle' | 'loading' | 'playing' | 'paused';
