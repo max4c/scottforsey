@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
+import NextImage from 'next/image';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { FileButton } from '@/components/ui/FileButton';
 import { AlbumCover } from '@/components/music/AlbumCover';
@@ -14,7 +15,7 @@ function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-type AdminTab = 'music' | 'albums' | 'art';
+type AdminTab = 'music' | 'albums' | 'art' | 'site';
 
 export function AdminPanel() {
   const [token, setToken] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export function AdminPanel() {
     { id: 'music', label: 'Music' },
     { id: 'albums', label: 'Albums' },
     { id: 'art', label: 'Art' },
+    { id: 'site', label: 'Site' },
   ];
 
   return (
@@ -89,6 +91,7 @@ export function AdminPanel() {
       {activeTab === 'albums' && <AlbumsSection token={token} />}
       {activeTab === 'music' && <MusicSection token={token} />}
       {activeTab === 'art' && <ArtSection token={token} />}
+      {activeTab === 'site' && <SiteSection token={token} />}
     </div>
   );
 }
@@ -781,6 +784,137 @@ function ArtSection({ token }: { token: string }) {
         {artworks?.length === 0 && (
           <p className="text-sm text-brown-lighter py-4 text-center">No artworks yet.</p>
         )}
+      </div>
+    </section>
+  );
+}
+
+function SiteSection({ token }: { token: string }) {
+  const settings = useQuery(api.siteSettings.get);
+  const updateSettings = useMutation(api.siteSettings.update);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [profilePreview, setProfilePreview] = useState<string | null>(null);
+  const [profileUploading, setProfileUploading] = useState(false);
+
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [faviconUploading, setFaviconUploading] = useState(false);
+
+  useEffect(() => {
+    if (!profileFile) { setProfilePreview(null); return; }
+    const url = URL.createObjectURL(profileFile);
+    setProfilePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [profileFile]);
+
+  useEffect(() => {
+    if (!faviconFile) { setFaviconPreview(null); return; }
+    const url = URL.createObjectURL(faviconFile);
+    setFaviconPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [faviconFile]);
+
+  async function handleProfileUpload() {
+    if (!profileFile) return;
+    setProfileUploading(true);
+    try {
+      const uploadUrl = await generateUploadUrl({ token });
+      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': profileFile.type }, body: profileFile });
+      const { storageId } = await result.json();
+      await updateSettings({ token, profileImageStorageId: storageId });
+      setProfileFile(null);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setProfileUploading(false);
+    }
+  }
+
+  async function handleFaviconUpload() {
+    if (!faviconFile) return;
+    setFaviconUploading(true);
+    try {
+      const uploadUrl = await generateUploadUrl({ token });
+      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': faviconFile.type }, body: faviconFile });
+      const { storageId } = await result.json();
+      await updateSettings({ token, faviconStorageId: storageId });
+      setFaviconFile(null);
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setFaviconUploading(false);
+    }
+  }
+
+  return (
+    <section className="space-y-4">
+      <h2 className="font-display text-lg font-bold text-brown mb-4">Site</h2>
+
+      {/* Profile image */}
+      <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
+        <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Profile photo</p>
+        <p className="text-xs text-brown-lighter">The circular photo next to "Scott Forsey" in the header.</p>
+        {settings?.profileImageUrl && !profilePreview && (
+          <div className="flex items-center gap-3">
+            <NextImage src={settings.profileImageUrl} alt="Current profile" width={56} height={56}
+              className="w-14 h-14 rounded-full object-cover border border-brown/10" unoptimized />
+            <span className="text-xs text-brown-lighter">Current photo</span>
+          </div>
+        )}
+        {profilePreview && (
+          <div className="flex items-center gap-3">
+            <img src={profilePreview} alt="Preview" className="w-14 h-14 rounded-full object-cover border border-brown/10" />
+            <button onClick={() => setProfileFile(null)} className="text-xs text-brown-lighter active:text-berry">Remove</button>
+          </div>
+        )}
+        <FileButton
+          accept="image/*"
+          label="Choose photo"
+          selectedName={profileFile?.name}
+          onChange={setProfileFile}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>}
+        />
+        <button
+          onClick={handleProfileUpload}
+          disabled={profileUploading || !profileFile}
+          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50"
+        >
+          {profileUploading ? 'Uploading...' : 'Save photo'}
+        </button>
+      </div>
+
+      {/* Favicon */}
+      <div className="bg-white rounded-lg p-4 shadow-sm space-y-3">
+        <p className="text-xs font-semibold text-brown-lighter uppercase tracking-wide">Favicon</p>
+        <p className="text-xs text-brown-lighter">The small icon shown in browser tabs. Use a square image (PNG or ICO).</p>
+        {settings?.faviconUrl && !faviconPreview && (
+          <div className="flex items-center gap-3">
+            <img src={settings.faviconUrl} alt="Current favicon" className="w-8 h-8 object-contain border border-brown/10 rounded" />
+            <span className="text-xs text-brown-lighter">Current favicon</span>
+          </div>
+        )}
+        {faviconPreview && (
+          <div className="flex items-center gap-3">
+            <img src={faviconPreview} alt="Preview" className="w-8 h-8 object-contain border border-brown/10 rounded" />
+            <button onClick={() => setFaviconFile(null)} className="text-xs text-brown-lighter active:text-berry">Remove</button>
+          </div>
+        )}
+        <FileButton
+          accept="image/png,image/ico,image/x-icon,image/jpeg,image/webp"
+          label="Choose favicon"
+          selectedName={faviconFile?.name}
+          onChange={setFaviconFile}
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0 opacity-60"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6" stroke="white" strokeWidth="2" fill="none"/></svg>}
+        />
+        <button
+          onClick={handleFaviconUpload}
+          disabled={faviconUploading || !faviconFile}
+          className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50"
+        >
+          {faviconUploading ? 'Uploading...' : 'Save favicon'}
+        </button>
       </div>
     </section>
   );

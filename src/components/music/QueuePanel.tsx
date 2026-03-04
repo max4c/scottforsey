@@ -34,7 +34,7 @@ export function QueuePanel() {
             className="fixed left-0 right-0 bottom-20 z-40 mx-auto max-w-2xl px-2"
             style={{ maxHeight: 'calc(70vh)' }}
           >
-            <div className="bg-white dark:bg-[#2E2418] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            <div className="bg-white dark:bg-[#162040] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
               style={{ maxHeight: 'calc(70vh)' }}>
 
               {/* Header */}
@@ -117,7 +117,7 @@ export function QueuePanel() {
                             </button>
                             <button
                               onClick={() => removeFromQueue(qIdx)}
-                              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-brown-lighter hover:text-berry hover:bg-berry/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-brown-lighter hover:text-berry hover:bg-berry/10 transition-colors"
                               aria-label="Remove from queue"
                             >
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">

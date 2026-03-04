@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MusicBar } from "@/components/layout/MusicBar";
+import { FaviconUpdater } from "@/components/layout/FaviconUpdater";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -49,6 +50,7 @@ export default function RootLayout({
         <ConvexClientProvider>
           <AudioProvider>
             <ThemeProvider>
+              <FaviconUpdater />
               <Header />
               <main className="min-h-screen pb-20">{children}</main>
               <Footer />

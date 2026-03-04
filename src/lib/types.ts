@@ -13,6 +13,7 @@ export interface AlbumData {
 
 export interface SongData {
   _id: string;
+  _creationTime?: number;
   title: string;
   url: string | null;
   duration: number;

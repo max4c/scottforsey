@@ -25,6 +25,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
   const { state, currentTrack, playQueue, togglePlayPause, addToQueue, playNext } = useAudioPlayer();
   const isCurrentTrack = currentTrack?.id === song._id;
   const isPlaying = isCurrentTrack && state === 'playing';
+  const isNew = song._creationTime != null && Date.now() - song._creationTime < 30 * 24 * 60 * 60 * 1000;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const track = songToTrack(song);
@@ -51,7 +52,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors group
-        ${isCurrentTrack ? 'bg-sunset/10 shadow-sm' : 'bg-white dark:bg-[#2E2418] shadow-sm hover:shadow-md'}`}
+        ${isCurrentTrack ? 'bg-sunset/10 shadow-sm' : 'bg-white dark:bg-[#162040] shadow-sm hover:shadow-md'}`}
     >
       {/* Clickable play area */}
       <button
@@ -75,10 +76,15 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
         </div>
 
         {/* Title */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-2 min-w-0">
           <p className={`font-display font-semibold text-sm truncate ${isCurrentTrack ? 'text-sunset' : 'text-brown'}`}>
             {song.title}
           </p>
+          {isNew && (
+            <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky/20 text-sky-dark dark:text-sky leading-none">
+              NEW
+            </span>
+          )}
         </div>
 
         {/* Duration */}
@@ -91,7 +97,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
       <div className="relative flex-shrink-0" ref={menuRef}>
         <button
           onClick={() => setMenuOpen(o => !o)}
-          className="w-7 h-7 flex items-center justify-center rounded-full text-brown-lighter hover:text-brown hover:bg-parchment/60 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+          className="w-7 h-7 flex items-center justify-center rounded-full text-brown-lighter hover:text-brown hover:bg-parchment/60 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
           aria-label="Track options"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -100,7 +106,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0 }: TrackRowPro
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 bottom-full mb-1 w-40 bg-white dark:bg-[#3A2C1E] rounded-xl shadow-lg border border-brown/10 overflow-hidden z-20 py-1">
+          <div className="absolute right-0 bottom-full mb-1 w-40 bg-white dark:bg-[#1E2D52] rounded-xl shadow-lg border border-brown/10 overflow-hidden z-20 py-1">
             <button
               onClick={() => { playQueue(allTracks, trackIndex); setMenuOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown hover:bg-parchment/60 transition-colors text-left"

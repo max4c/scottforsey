@@ -42,4 +42,9 @@ export default defineSchema({
     token: v.string(),
     expiresAt: v.number(),
   }).index("by_token", ["token"]),
+
+  siteSettings: defineTable({
+    profileImageStorageId: v.optional(v.id("_storage")),
+    faviconStorageId: v.optional(v.id("_storage")),
+  }),
 });

@@ -55,61 +55,57 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* ── Dark mode — warm amber night ── */
+/* ── Dark mode — starry night navy ── */
 
 .dark {
-  --color-cream: #1C1610;
-  --color-cream-dark: #211A12;
-  --color-parchment: #2E2418;
-  --color-brown: #F5E8D4;
-  --color-brown-light: #D4B896;
-  --color-brown-lighter: #8A7060;
+  --color-cream: #0B1120;
+  --color-cream-dark: #0F1729;
+  --color-parchment: #162040;
+  --color-brown: #E8EDF8;
+  --color-brown-light: #9BAACF;
+  --color-brown-lighter: #5A6B8A;
 }
 
-/* Body: warm amber-dark with subtle accent glows */
+/* Body: deep navy with subtle cool glows */
 .dark body {
-  background-color: #1C1610;
+  background-color: #0B1120;
   background-image:
-    radial-gradient(ellipse at 20% 0%, rgba(255, 140, 66, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(232, 67, 147, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 0%, rgba(126, 200, 227, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(100, 120, 220, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 40%, rgba(255, 140, 66, 0.04) 0%, transparent 40%);
 }
 
 /* Slightly brighter grain in dark mode */
 .dark body::after {
-  opacity: 0.045;
+  opacity: 0.04;
 }
 
 /* Elevated card surfaces */
 .dark [class*="bg-white"] {
-  background-color: #2E2418;
+  background-color: #162040;
 }
 
 /* Inputs & selects */
 .dark input:not([type="color"]),
 .dark select,
 .dark textarea {
-  background-color: #3A2C1E !important;
-  color: #F5E8D4 !important;
-  border-color: rgba(245, 232, 212, 0.15) !important;
-}
-
-/* Slightly brighter grain overlay in dark */
-.dark body::after {
-  opacity: 0.04;
+  background-color: #1E2D52 !important;
+  color: #E8EDF8 !important;
+  border-color: rgba(232, 237, 248, 0.12) !important;
 }
 
 /* Scrollbar */
 .dark ::-webkit-scrollbar-track {
-  background: #1C1610;
+  background: #0B1120;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #5A4030;
+  background: #2A3D6A;
   border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #7A5A42;
+  background: #3A5490;
 }
 
 .font-pixel {

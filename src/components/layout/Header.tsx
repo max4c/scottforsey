@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -15,12 +17,14 @@ const navLinks = [
 export function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const settings = useQuery(api.siteSettings.get);
+  const profileImageUrl = settings?.profileImageUrl ?? '/lucas.jpg';
 
   return (
     <header className="sticky top-0 z-40 bg-cream/90 backdrop-blur-sm border-b border-parchment">
       <nav className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <Image src="/lucas.jpg" alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover" />
+          <Image src={profileImageUrl} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover" unoptimized />
           <span className="font-display text-lg font-bold text-brown group-hover:text-sunset transition-colors">
             Scott Forsey
           </span>

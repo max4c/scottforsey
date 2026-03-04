@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as albums from "../albums.js";
 import type * as artworks from "../artworks.js";
 import type * as seedData from "../seedData.js";
+import type * as siteSettings from "../siteSettings.js";
 import type * as songs from "../songs.js";
 import type * as storage from "../storage.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   albums: typeof albums;
   artworks: typeof artworks;
   seedData: typeof seedData;
+  siteSettings: typeof siteSettings;
   songs: typeof songs;
   storage: typeof storage;
 }>;

@@ -9,9 +9,91 @@ import { songToTrack } from '@/components/music/TrackRow';
 import { Button } from '@/components/ui/Button';
 import { formatDuration } from '@/lib/types';
 import type { SongData, AlbumData } from '@/lib/types';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
-type SortOption = 'title-asc' | 'title-desc' | 'duration-asc' | 'duration-desc';
+type SortOption = 'title-asc' | 'title-desc' | 'duration-asc' | 'duration-desc' | 'recently-added';
+
+function AlbumFilterDropdown({
+  albums,
+  selected,
+  onChange,
+}: {
+  albums: AlbumData[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  function toggle(id: string) {
+    if (selected.includes(id)) onChange(selected.filter(x => x !== id));
+    else onChange([...selected, id]);
+  }
+
+  const label = selected.length === 0
+    ? 'All Albums'
+    : selected.length === 1
+      ? (albums.find(a => a._id === selected[0])?.title ?? (selected[0] === '__none__' ? 'No Album' : '1 Album'))
+      : `${selected.length} Albums`;
+
+  return (
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-brown/20 bg-white dark:bg-[#162040] text-brown dark:text-[#E8EDF8] text-sm focus:outline-none focus:border-sunset"
+      >
+        <span className="truncate">{label}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter flex-shrink-0 ml-2">
+          <path d="M7 10l5 5 5-5z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1E2D52] rounded-xl shadow-lg border border-brown/10 dark:border-white/10 overflow-hidden z-20 py-1">
+          <button
+            onClick={() => onChange([])}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.length === 0 ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+              {selected.length === 0 && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+            </span>
+            All Albums
+          </button>
+          {albums.map(a => (
+            <button
+              key={a._id}
+              onClick={() => toggle(a._id)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+            >
+              <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.includes(a._id) ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+                {selected.includes(a._id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+              </span>
+              {a.title}
+            </button>
+          ))}
+          <button
+            onClick={() => toggle('__none__')}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.includes('__none__') ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+              {selected.includes('__none__') && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+            </span>
+            No Album
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
@@ -19,18 +101,20 @@ export function MusicPageContent() {
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [albumFilter, setAlbumFilter] = useState('');
+  const [albumFilters, setAlbumFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
 
   const filteredSongs = useMemo(() => {
     if (!songs) return [];
     let list = songs as SongData[];
 
-    // Album filter
-    if (albumFilter === '__none__') {
-      list = list.filter(s => !s.albumId);
-    } else if (albumFilter) {
-      list = list.filter(s => s.albumId === albumFilter);
+    // Album filter (multi)
+    if (albumFilters.length > 0) {
+      list = list.filter(s => {
+        if (albumFilters.includes('__none__') && !s.albumId) return true;
+        if (s.albumId && albumFilters.includes(s.albumId)) return true;
+        return false;
+      });
     }
 
     // Search
@@ -43,11 +127,12 @@ export function MusicPageContent() {
       if (sortBy === 'title-desc') return b.title.localeCompare(a.title);
       if (sortBy === 'duration-asc') return a.duration - b.duration;
       if (sortBy === 'duration-desc') return b.duration - a.duration;
+      if (sortBy === 'recently-added') return (b._creationTime ?? 0) - (a._creationTime ?? 0);
       return 0;
     });
 
     return list;
-  }, [songs, search, albumFilter, sortBy]);
+  }, [songs, search, albumFilters, sortBy]);
 
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;
@@ -187,18 +272,11 @@ export function MusicPageContent() {
         {/* Filter + Sort row */}
         {albums.length > 0 && (
           <div className="flex gap-2 mb-3">
-            <select
-              value={albumFilter}
-              onChange={e => setAlbumFilter(e.target.value)}
-              className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-brown/20 bg-white text-brown text-sm focus:outline-none focus:border-sunset appearance-none"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238B7355'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
-            >
-              <option value="">All Albums</option>
-              {(albums as AlbumData[]).map(a => (
-                <option key={a._id} value={a._id}>{a.title}</option>
-              ))}
-              <option value="__none__">No Album</option>
-            </select>
+            <AlbumFilterDropdown
+              albums={albums as AlbumData[]}
+              selected={albumFilters}
+              onChange={setAlbumFilters}
+            />
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as SortOption)}
@@ -207,8 +285,9 @@ export function MusicPageContent() {
             >
               <option value="title-asc">Title A→Z</option>
               <option value="title-desc">Title Z→A</option>
-              <option value="duration-asc">Shortest first</option>
-              <option value="duration-desc">Longest first</option>
+              <option value="duration-asc">Shortest</option>
+              <option value="duration-desc">Longest</option>
+              <option value="recently-added">Recently Added</option>
             </select>
           </div>
         )}
