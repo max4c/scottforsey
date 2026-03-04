@@ -127,7 +127,9 @@ export function MusicPageContent() {
     <>
       {/* Album grid */}
       {albums.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+        <>
+          <h2 className="font-display font-bold text-brown text-lg mb-3">Albums</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
           {(albums as AlbumData[]).map((album) => {
             const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
             if (albumSongs.length === 0) return null;
@@ -152,10 +154,12 @@ export function MusicPageContent() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* All Tracks */}
       <div>
+        <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>
         <div className="flex items-center justify-between mb-3 gap-3">
           <p className="text-brown-light text-sm whitespace-nowrap">{songs.length} tracks · {formatDuration(totalDuration)}</p>
           <div className="flex gap-2 flex-shrink-0">
