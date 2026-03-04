@@ -28,6 +28,11 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Smooth theme transitions */
+body, body * {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease;
+}
+
 body {
   background-color: #FFF8F0;
   color: #4A3728;
@@ -43,6 +48,54 @@ body::after {
   z-index: 9999;
   opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Dark mode ── */
+/* Redefine color tokens */
+.dark {
+  --color-cream: #1C1929;
+  --color-cream-dark: #181626;
+  --color-parchment: #252242;
+  --color-brown: #F0E4D4;
+  --color-brown-light: #C8B49A;
+  --color-brown-lighter: #7A6A5A;
+}
+
+.dark body {
+  background-color: #1C1929;
+  color: #F0E4D4;
+}
+
+/* Night-sky grain gets a bit brighter */
+.dark body::after {
+  opacity: 0.04;
+}
+
+/* Cards / white surfaces */
+.dark [class*="bg-white"] {
+  background-color: #252242;
+}
+
+/* Inputs and selects */
+.dark input:not([type="color"]),
+.dark select,
+.dark textarea {
+  background-color: #2E2A4A !important;
+  color: #F0E4D4 !important;
+  border-color: rgba(240, 228, 212, 0.15) !important;
+}
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #1C1929;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3D3860;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #524E7A;
 }
 
 .font-pixel {
