@@ -10,7 +10,7 @@ export function Hero() {
     <section className="relative overflow-hidden py-12 md:py-28">
       {/* Decorative blobs */}
       <WatercolorBlob color="#7EC8E3" size={300} className="-top-16 -left-16" />
-      <WatercolorBlob color="#E84393" size={250} className="-top-8 right-4" />
+      <WatercolorBlob color="#E84393" size={180} className="-top-8 right-4 hidden sm:block" />
       <WatercolorBlob color="#FF8C42" size={200} className="bottom-0 left-1/4" />
 
       <div className="relative max-w-6xl mx-auto px-4 text-center">
@@ -22,7 +22,7 @@ export function Hero() {
         >
           Music & Art by
           <br />
-          <span className="bg-gradient-to-r from-sky via-sunset to-berry bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-sky to-sunset bg-clip-text text-transparent">
             Scott Forsey
           </span>
         </motion.h1>
