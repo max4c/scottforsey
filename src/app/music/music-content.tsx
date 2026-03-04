@@ -9,13 +9,14 @@ import { songToTrack } from '@/components/music/TrackRow';
 import { Button } from '@/components/ui/Button';
 import { formatDuration } from '@/lib/types';
 import type { SongData, AlbumData } from '@/lib/types';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;
@@ -34,15 +35,6 @@ export function MusicPageContent() {
     if (!shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
-
-  function handlePlayAlbum(albumId: string) {
-    const albumSongs = (songs as SongData[])
-      .filter(s => s.albumId === albumId)
-      .sort((a, b) => a.order - b.order);
-    playQueue(albumSongs.map(s => songToTrack(s)), 0);
-  }
-
-  const unassignedSongs = (songs as SongData[]).filter(s => !s.albumId);
 
   // No albums — flat list
   if (albums.length === 0) {
@@ -66,13 +58,10 @@ export function MusicPageContent() {
 
   // Album detail view
   if (selectedAlbumId) {
-    const isUnassigned = selectedAlbumId === '__unassigned__';
-    const album = isUnassigned ? null : (albums as AlbumData[]).find(a => a._id === selectedAlbumId);
-    const albumSongs = isUnassigned
-      ? unassignedSongs.slice().sort((a, b) => a.order - b.order)
-      : (songs as SongData[])
-          .filter(s => s.albumId === selectedAlbumId)
-          .sort((a, b) => a.order - b.order);
+    const album = (albums as AlbumData[]).find(a => a._id === selectedAlbumId);
+    const albumSongs = (songs as SongData[])
+      .filter(s => s.albumId === selectedAlbumId)
+      .sort((a, b) => a.order - b.order);
     const albumDuration = albumSongs.reduce((acc, s) => acc + s.duration, 0);
 
     return (
@@ -85,12 +74,6 @@ export function MusicPageContent() {
           All albums
         </button>
 
-        {isUnassigned && (
-          <div className="mb-6">
-            <h2 className="font-display font-bold text-brown text-xl">Other Tracks</h2>
-            <p className="text-brown-lighter text-xs mt-0.5">{albumSongs.length} tracks</p>
-          </div>
-        )}
         {album && (
           <div className="flex items-center gap-4 mb-6">
             <AlbumCover
@@ -122,6 +105,13 @@ export function MusicPageContent() {
     );
   }
 
+  const filteredSongs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q
+      ? (songs as SongData[]).filter(s => s.title.toLowerCase().includes(q))
+      : (songs as SongData[]);
+  }, [songs, search]);
+
   // Grid view
   return (
     <>
@@ -140,59 +130,65 @@ export function MusicPageContent() {
       </div>
 
       {/* Album grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
-        {(albums as AlbumData[]).map((album) => {
-          const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
-          if (albumSongs.length === 0) return null;
-          return (
-            <button
-              key={album._id}
-              onClick={() => setSelectedAlbumId(album._id)}
-              className="text-left group"
-            >
-              <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                {album.coverUrl ? (
-                  <img
-                    src={album.coverUrl}
-                    alt={album.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full"
-                    style={{ background: `linear-gradient(135deg, ${album.gradientFrom ?? '#f4a261'}, ${album.gradientTo ?? '#e76f51'})` }}
-                  />
-                )}
-                {/* Play overlay on hover */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-brown ml-0.5">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+      {albums.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+          {(albums as AlbumData[]).map((album) => {
+            const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
+            if (albumSongs.length === 0) return null;
+            return (
+              <button key={album._id} onClick={() => setSelectedAlbumId(album._id)} className="text-left group">
+                <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
+                  {album.coverUrl ? (
+                    <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full"
+                      style={{ background: `linear-gradient(135deg, ${album.gradientFrom ?? '#f4a261'}, ${album.gradientTo ?? '#e76f51'})` }} />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-brown ml-0.5"><path d="M8 5v14l11-7z" /></svg>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="mt-2 font-display font-semibold text-sm text-brown truncate">{album.title}</p>
-              <p className="text-xs text-brown-lighter">{albumSongs.length} tracks</p>
-            </button>
-          );
-        })}
+                <p className="mt-2 font-display font-semibold text-sm text-brown truncate">{album.title}</p>
+                <p className="text-xs text-brown-lighter">{albumSongs.length} tracks</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-        {/* Unassigned songs tile */}
-        {unassignedSongs.length > 0 && (
-          <button
-            onClick={() => setSelectedAlbumId('__unassigned__')}
-            className="text-left group"
-          >
-            <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm bg-parchment/60 group-active:scale-95 transition-transform flex items-center justify-center">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="text-brown/30">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+      {/* All Tracks */}
+      <div>
+        <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>
+        <div className="relative mb-4">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-lighter pointer-events-none">
+            <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search songs..."
+            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-brown/20 bg-white text-brown text-sm focus:outline-none focus:border-sunset"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-lighter active:text-brown"
+              aria-label="Clear search"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors" />
-            </div>
-            <p className="mt-2 font-display font-semibold text-sm text-brown">Other Tracks</p>
-            <p className="text-xs text-brown-lighter">{unassignedSongs.length} tracks</p>
-          </button>
+            </button>
+          )}
+        </div>
+        {filteredSongs.length === 0 ? (
+          <p className="text-sm text-brown-lighter text-center py-8">No songs match "{search}"</p>
+        ) : (
+          <TrackList songs={filteredSongs} />
         )}
       </div>
     </>
