@@ -3,13 +3,14 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { TrackList } from '@/components/music/TrackList';
-import { AlbumCover } from '@/components/music/AlbumCover';
 import { useAudioPlayer } from '@/lib/audio/context';
 import { songToTrack } from '@/components/music/TrackRow';
 import { Button } from '@/components/ui/Button';
 import { formatDuration } from '@/lib/types';
 import type { SongData, AlbumData } from '@/lib/types';
 import { useState, useMemo, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { slugify } from '@/lib/slug';
 
 type SortOption = 'title-asc' | 'title-desc' | 'duration-asc' | 'duration-desc' | 'recently-added';
 
@@ -99,7 +100,6 @@ export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [albumFilters, setAlbumFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
@@ -172,64 +172,6 @@ export function MusicPageContent() {
     );
   }
 
-  // Album detail view
-  if (selectedAlbumId) {
-    const album = (albums as AlbumData[]).find(a => a._id === selectedAlbumId);
-    const albumSongs = (songs as SongData[])
-      .filter(s => s.albumId === selectedAlbumId)
-      .sort((a, b) => a.order - b.order);
-    const albumDuration = albumSongs.reduce((acc, s) => acc + s.duration, 0);
-
-    return (
-      <>
-        <button
-          onClick={() => setSelectedAlbumId(null)}
-          className="flex items-center gap-1.5 text-sm text-brown-lighter active:text-brown mb-6"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" /></svg>
-          All albums
-        </button>
-
-        {album && (
-          <div className="flex items-center gap-4 mb-6">
-            <AlbumCover
-              coverUrl={album.coverUrl}
-              gradientFrom={album.gradientFrom}
-              gradientTo={album.gradientTo}
-              title={album.title}
-              size="lg"
-            />
-            <div className="flex-1 min-w-0">
-              <h2 className="font-display font-bold text-brown text-xl truncate">{album.title}</h2>
-              {album.description && <p className="text-brown-light text-sm truncate">{album.description}</p>}
-              <p className="text-brown-lighter text-xs mt-0.5">
-                {albumSongs.length} tracks · {formatDuration(albumDuration)}
-              </p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => { const tracks = albumSongs.map(s => songToTrack(s)); if (shuffle) toggleShuffle(); playQueue(tracks, 0); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                Play
-              </button>
-              <button
-                onClick={() => { const tracks = albumSongs.map(s => songToTrack(s)); if (!shuffle) toggleShuffle(); playQueue(tracks, 0); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-sunset text-white text-sm font-semibold active:bg-sunset/80"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
-                Shuffle
-              </button>
-            </div>
-          </div>
-        )}
-
-        <TrackList songs={albumSongs} />
-      </>
-    );
-  }
-
   // Grid view
   return (
     <>
@@ -242,7 +184,7 @@ export function MusicPageContent() {
             const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
             if (albumSongs.length === 0) return null;
             return (
-              <button key={album._id} onClick={() => setSelectedAlbumId(album._id)} className="text-left group">
+              <Link key={album._id} href={`/music/${slugify(album.title)}`} className="text-left group">
                 <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
                   {album.coverUrl ? (
                     <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
@@ -258,7 +200,7 @@ export function MusicPageContent() {
                 </div>
                 <p className="mt-2 font-display font-semibold text-sm text-brown truncate">{album.title}</p>
                 <p className="text-xs text-brown-lighter">{albumSongs.length} tracks</p>
-              </button>
+              </Link>
             );
           })}
         </div>
