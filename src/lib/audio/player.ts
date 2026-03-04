@@ -180,15 +180,14 @@ class AudioPlayer {
   playQueue(tracks: Track[], startIndex: number = 0) {
     this._originalQueue = tracks;
     if (this._shuffle) {
-      const current = tracks[startIndex];
-      const rest = tracks.filter((_, i) => i !== startIndex);
-      this._queue = [current, ...shuffleArray(rest)];
+      // Fully shuffle — don't anchor startIndex as first track
+      this._queue = shuffleArray(tracks);
       this._queueIndex = 0;
     } else {
       this._queue = tracks;
       this._queueIndex = startIndex;
     }
-    const track = this._queue[this._shuffle ? 0 : startIndex];
+    const track = this._queue[this._queueIndex];
     if (track) this.play(track);
   }
 

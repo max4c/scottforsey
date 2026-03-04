@@ -545,64 +545,63 @@ function MusicSection({ token }: { token: string }) {
       {/* Song List */}
       <div className="mt-4 space-y-2">
         {songs?.map((song) => (
-          <div key={song._id} className="flex items-center gap-3 bg-white rounded-lg px-4 py-3 shadow-sm">
-            <button onClick={() => togglePlay(song._id, song.url)}
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-parchment/60 active:bg-sunset/20"
-              aria-label={playingId === song._id ? 'Pause' : 'Play'}>
-              {playingId === song._id ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-sunset"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter"><path d="M8 5v14l11-7z" /></svg>
-              )}
-            </button>
-            <div className="flex-1 min-w-0">
-              {editingSongId === song._id ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingSongTitle}
-                    onChange={(e) => setEditingSongTitle(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') saveRenameSong(song._id); if (e.key === 'Escape') setEditingSongId(null); }}
-                    className="flex-1 px-2 py-1 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
-                    autoFocus
-                  />
-                  <button onClick={() => saveRenameSong(song._id)} className="text-xs text-sunset font-semibold">Save</button>
-                  <button onClick={() => setEditingSongId(null)} className="text-xs text-brown-lighter">✕</button>
-                </div>
-              ) : (
-                <p className={`font-display font-semibold text-sm truncate ${song.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
-                  {song.title}
-                </p>
-              )}
-              <p className="text-xs text-brown-lighter">
-                {formatDuration(song.duration)}
-                {song.featured && ' · Featured'}
-              </p>
-            </div>
-            {albums && albums.length > 0 && (
-              <select value={(song as any).albumId ?? ''} onChange={(e) => handleAlbumChange(song._id, e.target.value)}
-                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]">
-                <option value="">No album</option>
-                {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
-              </select>
-            )}
-            {editingSongId !== song._id && (
-              <button onClick={() => startRenameSong(song)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">
-                Rename
+          <div key={song._id} className="bg-white rounded-lg px-3 py-2.5 shadow-sm space-y-2">
+            {/* Row 1: play + title */}
+            <div className="flex items-center gap-2.5">
+              <button onClick={() => togglePlay(song._id, song.url)}
+                className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-parchment/60 active:bg-sunset/20"
+                aria-label={playingId === song._id ? 'Pause' : 'Play'}>
+                {playingId === song._id ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-sunset"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter"><path d="M8 5v14l11-7z" /></svg>
+                )}
               </button>
-            )}
-            <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, featured: !song.featured })}
-              className={`text-xs px-2 py-1 rounded ${song.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
-              {song.featured ? 'Featured' : 'Feature'}
-            </button>
-            <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, isVisible: !song.isVisible })}
-              className={`text-xs px-2 py-1 rounded ${song.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
-              {song.isVisible ? 'Visible' : 'Hidden'}
-            </button>
-            <button onClick={() => { if (confirm('Delete this song?')) removeSong({ token, id: song._id as Id<"songs"> }); }}
-              className="text-xs text-berry/60 active:text-berry">
-              Delete
-            </button>
+              <div className="flex-1 min-w-0">
+                {editingSongId === song._id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingSongTitle}
+                      onChange={(e) => setEditingSongTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') saveRenameSong(song._id); if (e.key === 'Escape') setEditingSongId(null); }}
+                      className="flex-1 px-2 py-1 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"
+                      autoFocus
+                    />
+                    <button onClick={() => saveRenameSong(song._id)} className="text-xs text-sunset font-semibold flex-shrink-0">Save</button>
+                    <button onClick={() => setEditingSongId(null)} className="text-xs text-brown-lighter flex-shrink-0">✕</button>
+                  </div>
+                ) : (
+                  <p className={`font-display font-semibold text-sm truncate ${song.isVisible ? 'text-brown' : 'text-brown-lighter line-through'}`}>
+                    {song.title}
+                  </p>
+                )}
+                <p className="text-xs text-brown-lighter">{formatDuration(song.duration)}{song.featured && ' · Featured'}</p>
+              </div>
+            </div>
+            {/* Row 2: actions */}
+            <div className="flex items-center gap-1.5 flex-wrap pl-10">
+              {albums && albums.length > 0 && (
+                <select value={(song as any).albumId ?? ''} onChange={(e) => handleAlbumChange(song._id, e.target.value)}
+                  className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[120px]">
+                  <option value="">No album</option>
+                  {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
+                </select>
+              )}
+              {editingSongId !== song._id && (
+                <button onClick={() => startRenameSong(song)} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">Rename</button>
+              )}
+              <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, featured: !song.featured })}
+                className={`text-xs px-2 py-1 rounded ${song.featured ? 'bg-lego-yellow text-brown' : 'bg-parchment text-brown-lighter'}`}>
+                {song.featured ? 'Featured' : 'Feature'}
+              </button>
+              <button onClick={() => updateSong({ token, id: song._id as Id<"songs">, isVisible: !song.isVisible })}
+                className={`text-xs px-2 py-1 rounded ${song.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
+                {song.isVisible ? 'Visible' : 'Hidden'}
+              </button>
+              <button onClick={() => { if (confirm('Delete this song?')) removeSong({ token, id: song._id as Id<"songs"> }); }}
+                className="text-xs text-berry/60 active:text-berry ml-auto">Delete</button>
+            </div>
           </div>
         ))}
         {songs?.length === 0 && (
