@@ -42,7 +42,7 @@ export function Lightbox({ artwork, onClose, onNext, onPrevious }: LightboxProps
           onClick={onClose}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-brown/90 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
 
           {/* Close */}
           <button
