@@ -38,6 +38,7 @@ export const create = mutation({
     coverUrl: v.optional(v.string()),
     gradientFrom: v.optional(v.string()),
     gradientTo: v.optional(v.string()),
+    albumType: v.optional(v.union(v.literal('album'), v.literal('draft'))),
   },
   handler: async (ctx, { token, ...args }) => {
     await validateSession(ctx, token);
@@ -63,6 +64,7 @@ export const update = mutation({
     gradientTo: v.optional(v.string()),
     coverStorageId: v.optional(v.id("_storage")),
     clearCover: v.optional(v.boolean()),
+    albumType: v.optional(v.union(v.literal('album'), v.literal('draft'))),
   },
   handler: async (ctx, { token, id, clearCover, ...updates }) => {
     await validateSession(ctx, token);

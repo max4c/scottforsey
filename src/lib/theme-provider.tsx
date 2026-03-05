@@ -2,19 +2,20 @@
 
 import { useEffect } from 'react';
 
-function isNight(): boolean {
-  const h = new Date().getHours();
-  return h >= 20 || h < 6;
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
     function sync() {
-      document.documentElement.classList.toggle('dark', isNight());
+      const h = new Date().getHours();
+      document.documentElement.classList.toggle('dark', h >= 20 || h < 6 || mql.matches);
     }
     sync();
     const interval = setInterval(sync, 60_000);
-    return () => clearInterval(interval);
+    mql.addEventListener('change', sync);
+    return () => {
+      clearInterval(interval);
+      mql.removeEventListener('change', sync);
+    };
   }, []);
 
   return <>{children}</>;

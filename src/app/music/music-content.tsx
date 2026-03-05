@@ -141,13 +141,13 @@ export function MusicPageContent() {
   const totalDuration = songs.reduce((acc, s) => acc + s.duration, 0);
 
   function handlePlayAll() {
-    const tracks = (songs as SongData[]).map(s => songToTrack(s));
+    const tracks = filteredSongs.map(s => songToTrack(s));
     if (shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
 
   function handleShuffle() {
-    const tracks = (songs as SongData[]).map(s => songToTrack(s));
+    const tracks = filteredSongs.map(s => songToTrack(s));
     if (!shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
@@ -176,53 +176,75 @@ export function MusicPageContent() {
   return (
     <>
       {/* Album grid */}
-      {albums.length > 0 && (
-        <>
-          <h2 className="font-display font-bold text-brown text-lg mb-3">Albums</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
-          {(albums as AlbumData[]).map((album) => {
-            const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
-            if (albumSongs.length === 0) return null;
-            return (
-              <Link key={album._id} href={`/music/${slugify(album.title)}`} className="text-left group">
-                <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                  {album.coverUrl ? (
-                    <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full"
-                      style={{ background: `linear-gradient(135deg, ${album.gradientFrom ?? '#f4a261'}, ${album.gradientTo ?? '#e76f51'})` }} />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-brown ml-0.5"><path d="M8 5v14l11-7z" /></svg>
-                    </div>
+      {(() => {
+        const officialAlbums = (albums as AlbumData[]).filter(a => !a.albumType || a.albumType === 'album');
+        const draftAlbums = (albums as AlbumData[]).filter(a => a.albumType === 'draft');
+
+        function renderAlbumCard(album: AlbumData) {
+          const albumSongs = (songs as SongData[]).filter(s => s.albumId === album._id);
+          if (albumSongs.length === 0) return null;
+          return (
+            <Link key={album._id} href={`/music/${slugify(album.title)}`} className="text-left group">
+              <div className="relative aspect-square rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
+                {album.coverUrl ? (
+                  <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full"
+                    style={{ background: `linear-gradient(135deg, ${album.gradientFrom ?? '#f4a261'}, ${album.gradientTo ?? '#e76f51'})` }} />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-brown ml-0.5"><path d="M8 5v14l11-7z" /></svg>
                   </div>
                 </div>
-                <p className="mt-2 font-display font-semibold text-sm text-brown truncate">{album.title}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-brown-lighter">{albumSongs.length} tracks</p>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const url = `${window.location.origin}/music/${slugify(album.title)}`;
-                      if (navigator.share) {
-                        navigator.share({ title: album.title, url }).catch(() => {});
-                      } else {
-                        navigator.clipboard.writeText(url);
-                      }
-                    }}
-                    className="p-1 text-brown-lighter hover:text-brown transition-colors"
-                    aria-label="Share album"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
-                  </button>
+              </div>
+              <p className="mt-2 font-display font-semibold text-sm text-brown truncate">{album.title}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-brown-lighter">{albumSongs.length} tracks</p>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const url = `${window.location.origin}/music/${slugify(album.title)}`;
+                    if (navigator.share) {
+                      navigator.share({ title: album.title, url }).catch(() => {});
+                    } else {
+                      navigator.clipboard.writeText(url);
+                    }
+                  }}
+                  className="p-1 text-brown-lighter hover:text-brown transition-colors"
+                  aria-label="Share album"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+                </button>
+              </div>
+            </Link>
+          );
+        }
+
+        const officialCards = officialAlbums.map(renderAlbumCard).filter(Boolean);
+        const draftCards = draftAlbums.map(renderAlbumCard).filter(Boolean);
+
+        return (
+          <>
+            {officialCards.length > 0 && (
+              <>
+                <h2 className="font-display font-bold text-brown text-lg mb-3">Albums</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+                  {officialCards}
                 </div>
-              </Link>
-            );
-          })}
-        </div>
-        </>
-      )}
+              </>
+            )}
+            {draftCards.length > 0 && (
+              <>
+                <h2 className="font-display font-bold text-brown text-lg mb-3">Drafts</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+                  {draftCards}
+                </div>
+              </>
+            )}
+          </>
+        );
+      })()}
 
       {/* All Tracks */}
       <div>

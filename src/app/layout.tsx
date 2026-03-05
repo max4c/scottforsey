@@ -39,10 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Set dark class before first paint to prevent flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){var h=new Date().getHours();if(h>=20||h<6)document.documentElement.classList.add('dark');})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var h=new Date().getHours(),d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d||h>=20||h<6)document.documentElement.classList.add('dark');})();` }} />
       </head>
       <body
         className={`${fredoka.variable} ${nunito.variable} ${pressStart.variable} antialiased`}

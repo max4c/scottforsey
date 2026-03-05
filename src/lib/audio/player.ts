@@ -70,11 +70,29 @@ class AudioPlayer {
     }
   }
 
+  private setupMediaSession(track: Track) {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: 'Scott Forsey',
+      album: track.albumTitle ?? '',
+      artwork: track.coverUrl ? [{ src: track.coverUrl }] : [],
+    });
+    navigator.mediaSession.setActionHandler('play', () => this.resume());
+    navigator.mediaSession.setActionHandler('pause', () => this.pause());
+    navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+    navigator.mediaSession.setActionHandler('previoustrack', () => this.previous());
+    navigator.mediaSession.setActionHandler('seekto', (d) => {
+      if (d.seekTime != null) this.seek(d.seekTime);
+    });
+  }
+
   play(track: Track) {
     this.destroyAudio();
     this._currentTrack = track;
     this._currentTime = 0;
     this._duration = track.duration;
+    this.setupMediaSession(track);
 
     if (!track.audioUrl) {
       // No audio file — simulate timed progress
@@ -101,6 +119,7 @@ class AudioPlayer {
     audio.preload = 'auto';
 
     audio.addEventListener('loadedmetadata', () => {
+      if (this.audio !== audio) return;
       if (audio.duration && isFinite(audio.duration)) {
         this._duration = audio.duration;
         this.notify();
@@ -108,16 +127,19 @@ class AudioPlayer {
     });
 
     audio.addEventListener('timeupdate', () => {
+      if (this.audio !== audio) return;
       this._currentTime = audio.currentTime;
       this.notify();
     });
 
     audio.addEventListener('play', () => {
+      if (this.audio !== audio) return;
       this._state = 'playing';
       this.notify();
     });
 
     audio.addEventListener('pause', () => {
+      if (this.audio !== audio) return;
       if (this._state === 'playing') {
         this._state = 'paused';
         this.notify();
@@ -125,20 +147,27 @@ class AudioPlayer {
     });
 
     audio.addEventListener('ended', () => {
+      if (this.audio !== audio) return;
       this.next();
     });
 
     audio.addEventListener('error', () => {
+      if (this.audio !== audio) return;
       this._state = 'paused';
       this._currentTime = 0;
       this.notify();
     });
 
     audio.src = track.audioUrl;
+
     audio.play().catch(() => {
-      // play() rejected — likely before canplay event. Try again on canplay.
+      // play() rejected — immediately show paused so UI is responsive.
+      this._state = 'paused';
+      this.notify();
+      // Also retry on canplay in case audio hasn't loaded yet.
       const onCanPlay = () => {
         audio.removeEventListener('canplay', onCanPlay);
+        if (this.audio !== audio) return;
         audio.play().catch(() => {
           this._state = 'paused';
           this.notify();
@@ -167,6 +196,7 @@ class AudioPlayer {
   togglePlayPause() {
     if (this._state === 'playing') this.pause();
     else if (this._state === 'paused') this.resume();
+    else if (this._state === 'loading' && this.audio) this.audio.play().catch(() => {});
   }
 
   seek(time: number) {
@@ -266,6 +296,9 @@ class AudioPlayer {
       this._currentTrack = null;
       this._currentTime = 0;
       this.notify();
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAudioPlayer } from '@/lib/audio/context';
-import { formatDuration } from '@/lib/mock-data';
+import { formatDuration } from '@/lib/types';
 import { QueuePanel } from '@/components/music/QueuePanel';
 import { FullscreenPlayer } from '@/components/music/FullscreenPlayer';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -182,9 +182,9 @@ export function MusicBar() {
             <button
               onClick={togglePlayPause}
               className="w-11 h-11 flex items-center justify-center bg-sunset text-white rounded-full active:bg-sunset/80"
-              aria-label={state === 'playing' ? 'Pause' : 'Play'}
+              aria-label={state === 'playing' || state === 'loading' ? 'Pause' : 'Play'}
             >
-              {state === 'playing' ? (
+              {state === 'playing' || state === 'loading' ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
                 </svg>

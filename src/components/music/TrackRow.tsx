@@ -31,7 +31,7 @@ export function songToTrack(song: SongData, album?: AlbumMeta): Track {
 export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: TrackRowProps) {
   const { state, currentTrack, play, playQueue, togglePlayPause, addToQueue, playNext } = useAudioPlayer();
   const isCurrentTrack = currentTrack?.id === song._id;
-  const isPlaying = isCurrentTrack && state === 'playing';
+  const isPlaying = isCurrentTrack && (state === 'playing' || state === 'loading');
   const isNew = song._creationTime != null && Date.now() - song._creationTime < 30 * 24 * 60 * 60 * 1000;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: Trac
 
   function handleRowClick() {
     if (isCurrentTrack) togglePlayPause();
-    else playQueue([track], 0);
+    else playQueue(allTracks, trackIndex);
   }
 
   return (

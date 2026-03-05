@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use .dark class strategy for dark: utilities instead of prefers-color-scheme media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Remove 'inline' so Tailwind generates var(--color-x) references
    that can be overridden by the .dark class at runtime */
 @theme {

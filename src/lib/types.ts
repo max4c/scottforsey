@@ -9,6 +9,7 @@ export interface AlbumData {
   gradientTo?: string;
   order: number;
   isVisible: boolean;
+  albumType?: 'album' | 'draft';
 }
 
 export interface SongData {

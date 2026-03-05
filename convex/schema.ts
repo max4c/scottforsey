@@ -11,6 +11,7 @@ export default defineSchema({
     gradientTo: v.optional(v.string()),
     order: v.number(),
     isVisible: v.boolean(),
+    albumType: v.optional(v.union(v.literal('album'), v.literal('draft'))),
   }),
 
   songs: defineTable({
