@@ -163,7 +163,7 @@ function AlbumsSection({ token }: { token: string }) {
   const [editDescription, setEditDescription] = useState('');
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
-  const [editAlbumType, setEditAlbumType] = useState('album');
+  const [editAlbumType, setEditAlbumType] = useState<'album' | 'draft'>('album');
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
@@ -297,7 +297,7 @@ function AlbumsSection({ token }: { token: string }) {
                   className="w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset" />
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-brown-lighter">Type</label>
-                  <select value={editAlbumType} onChange={(e) => setEditAlbumType(e.target.value)}
+                  <select value={editAlbumType} onChange={(e) => setEditAlbumType(e.target.value as 'album' | 'draft')}
                     className="px-2 py-1.5 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white">
                     <option value="album">Album</option>
                     <option value="draft">Draft</option>
