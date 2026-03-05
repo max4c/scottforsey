@@ -85,6 +85,9 @@ class AudioPlayer {
     navigator.mediaSession.setActionHandler('seekto', (d) => {
       if (d.seekTime != null) this.seek(d.seekTime);
     });
+    // Explicitly disable the default ±15s seek buttons so iOS shows prev/next instead
+    try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
+    try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
   }
 
   play(track: Track) {
