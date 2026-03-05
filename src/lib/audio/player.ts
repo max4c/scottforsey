@@ -24,7 +24,12 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 class AudioPlayer {
+  // Single persistent element — iOS grants background playback permission to the
+  // element on first user-gesture play. Creating a new element per track loses that
+  // permission, causing lock-screen next/prev to silently fail.
   private audio: HTMLAudioElement | null = null;
+  private _switching = false; // suppress pause event fired during src swap
+
   private _state: PlayerState = 'idle';
   private _currentTrack: Track | null = null;
   private _queue: Track[] = [];
@@ -36,7 +41,6 @@ class AudioPlayer {
   private _shuffle: boolean = false;
   private _repeat: RepeatMode = 'off';
   private _listeners: Set<Listener> = new Set();
-  // Simulate progress for tracks with no audio URL
   private _timeInterval: ReturnType<typeof setInterval> | null = null;
 
   get state() { return this._state; }
@@ -58,15 +62,52 @@ class AudioPlayer {
     this._listeners.forEach(l => l());
   }
 
-  private destroyAudio() {
+  private getAudio(): HTMLAudioElement {
+    if (!this.audio) {
+      const audio = new Audio();
+      audio.volume = this._volume;
+      audio.preload = 'auto';
+
+      audio.addEventListener('loadedmetadata', () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          this._duration = audio.duration;
+          this.notify();
+        }
+      });
+      audio.addEventListener('timeupdate', () => {
+        this._currentTime = audio.currentTime;
+        this.notify();
+      });
+      audio.addEventListener('play', () => {
+        this._state = 'playing';
+        this.notify();
+      });
+      audio.addEventListener('pause', () => {
+        if (this._switching) return; // src swap in progress, not a real pause
+        if (this._state === 'playing') {
+          this._state = 'paused';
+          this.notify();
+        }
+      });
+      audio.addEventListener('ended', () => {
+        this.next();
+      });
+      audio.addEventListener('error', () => {
+        if (this._switching) return;
+        this._state = 'paused';
+        this._currentTime = 0;
+        this.notify();
+      });
+
+      this.audio = audio;
+    }
+    return this.audio;
+  }
+
+  private stopInterval() {
     if (this._timeInterval) {
       clearInterval(this._timeInterval);
       this._timeInterval = null;
-    }
-    if (this.audio) {
-      this.audio.pause();
-      this.audio.src = '';
-      this.audio = null;
     }
   }
 
@@ -85,27 +126,32 @@ class AudioPlayer {
     navigator.mediaSession.setActionHandler('seekto', (d) => {
       if (d.seekTime != null) this.seek(d.seekTime);
     });
-    // Explicitly disable the default ±15s seek buttons so iOS shows prev/next instead
+    // Disable default ±15s seek buttons so iOS lock screen shows prev/next
     try { navigator.mediaSession.setActionHandler('seekforward', null); } catch {}
     try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
   }
 
   play(track: Track) {
-    this.destroyAudio();
+    this.stopInterval();
     this._currentTrack = track;
     this._currentTime = 0;
     this._duration = track.duration;
     this.setupMediaSession(track);
 
     if (!track.audioUrl) {
-      // No audio file — simulate timed progress
+      // No audio file — pause real audio if playing and simulate progress
+      if (this.audio) {
+        this._switching = true;
+        this.audio.pause();
+        this.audio.src = '';
+        this._switching = false;
+      }
       this._state = 'playing';
       this.notify();
       this._timeInterval = setInterval(() => {
         this._currentTime += 0.25;
         if (this._currentTime >= this._duration) {
-          clearInterval(this._timeInterval!);
-          this._timeInterval = null;
+          this.stopInterval();
           this.next();
         } else {
           this.notify();
@@ -117,69 +163,16 @@ class AudioPlayer {
     this._state = 'loading';
     this.notify();
 
-    const audio = new Audio();
-    audio.volume = this._volume;
-    audio.preload = 'auto';
-
-    audio.addEventListener('loadedmetadata', () => {
-      if (this.audio !== audio) return;
-      if (audio.duration && isFinite(audio.duration)) {
-        this._duration = audio.duration;
-        this.notify();
-      }
-    });
-
-    audio.addEventListener('timeupdate', () => {
-      if (this.audio !== audio) return;
-      this._currentTime = audio.currentTime;
-      this.notify();
-    });
-
-    audio.addEventListener('play', () => {
-      if (this.audio !== audio) return;
-      this._state = 'playing';
-      this.notify();
-    });
-
-    audio.addEventListener('pause', () => {
-      if (this.audio !== audio) return;
-      if (this._state === 'playing') {
-        this._state = 'paused';
-        this.notify();
-      }
-    });
-
-    audio.addEventListener('ended', () => {
-      if (this.audio !== audio) return;
-      this.next();
-    });
-
-    audio.addEventListener('error', () => {
-      if (this.audio !== audio) return;
-      this._state = 'paused';
-      this._currentTime = 0;
-      this.notify();
-    });
-
+    const audio = this.getAudio();
+    this._switching = true;
+    audio.pause();
     audio.src = track.audioUrl;
+    this._switching = false;
 
     audio.play().catch(() => {
-      // play() rejected — immediately show paused so UI is responsive.
       this._state = 'paused';
       this.notify();
-      // Also retry on canplay in case audio hasn't loaded yet.
-      const onCanPlay = () => {
-        audio.removeEventListener('canplay', onCanPlay);
-        if (this.audio !== audio) return;
-        audio.play().catch(() => {
-          this._state = 'paused';
-          this.notify();
-        });
-      };
-      audio.addEventListener('canplay', onCanPlay);
     });
-
-    this.audio = audio;
   }
 
   pause() {
@@ -217,7 +210,6 @@ class AudioPlayer {
   playQueue(tracks: Track[], startIndex: number = 0) {
     this._originalQueue = tracks;
     if (this._shuffle) {
-      // Fully shuffle — don't anchor startIndex as first track
       this._queue = shuffleArray(tracks);
       this._queueIndex = 0;
     } else {
@@ -251,7 +243,7 @@ class AudioPlayer {
 
   removeFromQueue(index: number) {
     if (index < 0 || index >= this._queue.length) return;
-    if (index === this._queueIndex) return; // can't remove currently playing
+    if (index === this._queueIndex) return;
     this._queue.splice(index, 1);
     this._originalQueue = [...this._queue];
     if (index < this._queueIndex) this._queueIndex--;
@@ -294,7 +286,13 @@ class AudioPlayer {
       this._queueIndex = 0;
       this.play(this._queue[0]);
     } else {
-      this.destroyAudio();
+      this.stopInterval();
+      if (this.audio) {
+        this._switching = true;
+        this.audio.pause();
+        this.audio.src = '';
+        this._switching = false;
+      }
       this._state = 'idle';
       this._currentTrack = null;
       this._currentTime = 0;
