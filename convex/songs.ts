@@ -60,6 +60,7 @@ export const create = mutation({
     duration: v.number(),
     featured: v.boolean(),
     albumId: v.optional(v.id("albums")),
+    genre: v.optional(v.string()),
   },
   handler: async (ctx, { token, ...args }) => {
     await validateSession(ctx, token);
@@ -83,16 +84,38 @@ export const update = mutation({
     order: v.optional(v.number()),
     albumId: v.optional(v.id("albums")),
     clearAlbum: v.optional(v.boolean()),
+    genre: v.optional(v.string()),
+    clearGenre: v.optional(v.boolean()),
   },
-  handler: async (ctx, { token, id, clearAlbum, ...updates }) => {
+  handler: async (ctx, { token, id, clearAlbum, clearGenre, ...updates }) => {
     await validateSession(ctx, token);
-    const filtered = Object.fromEntries(
+    const filtered: Record<string, any> = Object.fromEntries(
       Object.entries(updates).filter(([, val]) => val !== undefined)
     );
-    if (clearAlbum) {
-      await ctx.db.patch(id, { ...filtered, albumId: undefined });
-    } else {
-      await ctx.db.patch(id, filtered);
+    if (clearAlbum) filtered.albumId = undefined;
+    if (clearGenre) filtered.genre = undefined;
+    await ctx.db.patch(id, filtered);
+  },
+});
+
+export const bulkUpdate = mutation({
+  args: {
+    token: v.string(),
+    ids: v.array(v.id("songs")),
+    albumId: v.optional(v.id("albums")),
+    clearAlbum: v.optional(v.boolean()),
+    genre: v.optional(v.string()),
+    clearGenre: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { token, ids, albumId, clearAlbum, genre, clearGenre }) => {
+    await validateSession(ctx, token);
+    for (const id of ids) {
+      const patch: Record<string, any> = {};
+      if (albumId) patch.albumId = albumId;
+      if (clearAlbum) patch.albumId = undefined;
+      if (genre) patch.genre = genre;
+      if (clearGenre) patch.genre = undefined;
+      await ctx.db.patch(id, patch);
     }
   },
 });

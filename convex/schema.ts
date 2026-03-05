@@ -23,6 +23,7 @@ export default defineSchema({
     featured: v.boolean(),
     isVisible: v.boolean(),
     albumId: v.optional(v.id("albums")),
+    genre: v.optional(v.string()),
   }),
 
   artworks: defineTable({

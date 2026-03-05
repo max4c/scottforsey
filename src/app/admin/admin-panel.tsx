@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useId } from 'react';
+import { useState, useEffect, useRef, useId, useMemo } from 'react';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import NextImage from 'next/image';
@@ -377,6 +377,54 @@ interface BatchFile {
   file: File;
   title: string;
   albumId: string;
+  genre: string;
+}
+
+function GenreInput({ value, onChange, genres, className }: { value: string; onChange: (v: string) => void; genres: string[]; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const filtered = value.trim()
+    ? genres.filter(g => g.toLowerCase().includes(value.toLowerCase()) && g !== value)
+    : genres.filter(g => g !== value);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent | TouchEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('mousedown', onOutside);
+      document.addEventListener('touchstart', onOutside);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('touchstart', onOutside);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Genre (optional)"
+        className={className ?? "w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"}
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-brown/10 overflow-hidden z-20 py-1 max-h-40 overflow-y-auto">
+          {filtered.map(g => (
+            <button key={g} onClick={() => { onChange(g); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-sm text-brown hover:bg-parchment/60 transition-colors">
+              {g}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MusicSection({ token }: { token: string }) {
@@ -384,13 +432,23 @@ function MusicSection({ token }: { token: string }) {
   const albums = useQuery(api.albums.listAll, { token });
   const createSong = useMutation(api.songs.create);
   const updateSong = useMutation(api.songs.update);
+  const bulkUpdateSongs = useMutation(api.songs.bulkUpdate);
   const removeSong = useMutation(api.songs.remove);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+
+  // Existing genres derived from songs
+  const existingGenres = useMemo(() => {
+    if (!songs) return [];
+    const set = new Set<string>();
+    for (const s of songs) if ((s as any).genre) set.add((s as any).genre);
+    return Array.from(set).sort();
+  }, [songs]);
 
   // Single upload
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [newSongAlbumId, setNewSongAlbumId] = useState('');
+  const [newSongGenre, setNewSongGenre] = useState('');
   const [uploading, setUploading] = useState(false);
 
   // Batch upload
@@ -405,6 +463,12 @@ function MusicSection({ token }: { token: string }) {
   // Song editing
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [editingSongTitle, setEditingSongTitle] = useState('');
+
+  // Bulk selection
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkGenre, setBulkGenre] = useState('');
+  const [bulkAlbumId, setBulkAlbumId] = useState('');
 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -430,6 +494,7 @@ function MusicSection({ token }: { token: string }) {
       file: f,
       title: f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
       albumId: '',
+      genre: '',
     })));
     e.target.value = '';
   }
@@ -442,9 +507,10 @@ function MusicSection({ token }: { token: string }) {
       const uploadUrl = await generateUploadUrl({ token });
       const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': audioFile.type }, body: audioFile });
       const { storageId } = await result.json();
-      await createSong({ token, title: title.trim(), storageId, duration: Math.round(duration), featured: false, albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined });
+      await createSong({ token, title: title.trim(), storageId, duration: Math.round(duration), featured: false, albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined, genre: newSongGenre.trim() || undefined });
       setTitle('');
       setNewSongAlbumId('');
+      setNewSongGenre('');
       setAudioFile(null);
     } catch (err) {
       console.error('Upload failed:', err);
@@ -458,13 +524,13 @@ function MusicSection({ token }: { token: string }) {
     setBatchUploading(true);
     setBatchProgress(0);
     for (let i = 0; i < batchFiles.length; i++) {
-      const { file, title: t, albumId } = batchFiles[i];
+      const { file, title: t, albumId, genre } = batchFiles[i];
       try {
         const duration = await getAudioDuration(file);
         const uploadUrl = await generateUploadUrl({ token });
         const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
         const { storageId } = await result.json();
-        await createSong({ token, title: t.trim() || file.name, storageId, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined });
+        await createSong({ token, title: t.trim() || file.name, storageId, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined, genre: genre.trim() || undefined });
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err);
       }
@@ -480,6 +546,42 @@ function MusicSection({ token }: { token: string }) {
     } else {
       updateSong({ token, id: songId as Id<"songs">, albumId: albumId as Id<"albums"> });
     }
+  }
+
+  function handleGenreChange(songId: string, genre: string) {
+    if (genre === '') {
+      updateSong({ token, id: songId as Id<"songs">, clearGenre: true });
+    } else {
+      updateSong({ token, id: songId as Id<"songs">, genre });
+    }
+  }
+
+  async function handleBulkApply() {
+    if (bulkSelected.size === 0) return;
+    const ids = Array.from(bulkSelected) as Id<"songs">[];
+    await bulkUpdateSongs({
+      token,
+      ids,
+      ...(bulkAlbumId === '__clear__' ? { clearAlbum: true } : bulkAlbumId ? { albumId: bulkAlbumId as Id<"albums"> } : {}),
+      ...(bulkGenre === '__clear__' ? { clearGenre: true } : bulkGenre ? { genre: bulkGenre } : {}),
+    });
+    setBulkSelected(new Set());
+    setBulkGenre('');
+    setBulkAlbumId('');
+  }
+
+  function toggleBulkSelect(songId: string) {
+    setBulkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(songId)) next.delete(songId);
+      else next.add(songId);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    const visible = songs?.filter(s => !songSearch.trim() || s.title.toLowerCase().includes(songSearch.trim().toLowerCase())) ?? [];
+    setBulkSelected(new Set(visible.map(s => s._id)));
   }
 
   function startRenameSong(song: any) {
@@ -538,6 +640,7 @@ function MusicSection({ token }: { token: string }) {
             {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
           </select>
         )}
+        <GenreInput value={newSongGenre} onChange={setNewSongGenre} genres={existingGenres} />
         <button onClick={handleUpload} disabled={uploading || !audioFile || !title.trim()}
           className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Uploading...' : 'Add Song'}
@@ -589,6 +692,14 @@ function MusicSection({ token }: { token: string }) {
                     {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                   </select>
                 )}
+                <select
+                  value={bf.genre}
+                  onChange={(e) => setBatchFiles((prev) => prev.map((f, j) => j === i ? { ...f, genre: e.target.value } : f))}
+                  className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]"
+                >
+                  <option value="">No genre</option>
+                  {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
                 <button onClick={() => setBatchFiles((prev) => prev.filter((_, j) => j !== i))}
                   className="text-xs text-berry/60 active:text-berry flex-shrink-0">✕</button>
               </div>
@@ -606,32 +717,77 @@ function MusicSection({ token }: { token: string }) {
 
       {/* Song List */}
       <div className="mt-4">
-        <div className="relative mb-3">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-lighter pointer-events-none">
-            <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <input
-            type="text"
-            value={songSearch}
-            onChange={(e) => setSongSearch(e.target.value)}
-            placeholder={`Search ${songs?.length ?? ''} songs...`}
-            className="w-full pl-8 pr-8 py-2 rounded-lg border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white"
-          />
-          {songSearch && (
-            <button onClick={() => setSongSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-lighter active:text-brown">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
-          )}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="relative flex-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-brown-lighter pointer-events-none">
+              <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <input
+              type="text"
+              value={songSearch}
+              onChange={(e) => setSongSearch(e.target.value)}
+              placeholder={`Search ${songs?.length ?? ''} songs...`}
+              className="w-full pl-8 pr-8 py-2 rounded-lg border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset bg-white"
+            />
+            {songSearch && (
+              <button onClick={() => setSongSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brown-lighter active:text-brown">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <button onClick={() => { setBulkMode(m => !m); setBulkSelected(new Set()); }}
+            className={`text-xs px-3 py-2 rounded-lg font-semibold whitespace-nowrap ${bulkMode ? 'bg-sunset text-white' : 'bg-parchment text-brown-light active:bg-parchment/70'}`}>
+            {bulkMode ? 'Done' : 'Bulk Edit'}
+          </button>
         </div>
+
+        {/* Bulk actions toolbar */}
+        {bulkMode && (
+          <div className="bg-sunset/5 border border-sunset/20 rounded-lg p-3 mb-3 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={selectAllVisible} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">Select All</button>
+              <button onClick={() => setBulkSelected(new Set())} className="text-xs px-2 py-1 rounded bg-parchment text-brown-light active:bg-parchment/70">Clear</button>
+              <span className="text-xs text-brown-lighter">{bulkSelected.size} selected</span>
+            </div>
+            {bulkSelected.size > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {albums && albums.length > 0 && (
+                  <select value={bulkAlbumId} onChange={(e) => setBulkAlbumId(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset">
+                    <option value="">— Album —</option>
+                    <option value="__clear__">Remove album</option>
+                    {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
+                  </select>
+                )}
+                <select value={bulkGenre} onChange={(e) => setBulkGenre(e.target.value)}
+                  className="text-xs px-2 py-1.5 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset">
+                  <option value="">— Genre —</option>
+                  <option value="__clear__">Remove genre</option>
+                  {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+                <button onClick={handleBulkApply}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-sunset text-white font-semibold active:bg-sunset/90">
+                  Apply to {bulkSelected.size}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-2">
         {songs?.filter(s => !songSearch.trim() || s.title.toLowerCase().includes(songSearch.trim().toLowerCase())).map((song) => (
           <div key={song._id} className="bg-white rounded-lg px-3 py-2.5 shadow-sm space-y-2">
             {/* Row 1: play + title */}
             <div className="flex items-center gap-2.5">
+              {bulkMode && (
+                <input type="checkbox" checked={bulkSelected.has(song._id)}
+                  onChange={() => toggleBulkSelect(song._id)}
+                  className="w-4 h-4 rounded border-brown/30 text-sunset focus:ring-sunset flex-shrink-0" />
+              )}
               <button onClick={() => togglePlay(song._id, song.url)}
                 className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-parchment/60 active:bg-sunset/20"
                 aria-label={playingId === song._id ? 'Pause' : 'Play'}>
@@ -672,6 +828,11 @@ function MusicSection({ token }: { token: string }) {
                   {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                 </select>
               )}
+              <select value={(song as any).genre ?? ''} onChange={(e) => handleGenreChange(song._id, e.target.value)}
+                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[120px]">
+                <option value="">No genre</option>
+                {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
               {(() => {
                 const group = (songs ?? []).filter((s: any) => s.albumId === (song as any).albumId).sort((a: any, b: any) => a.order - b.order);
                 const idx = group.findIndex((s: any) => s._id === song._id);

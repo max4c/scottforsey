@@ -21,6 +21,7 @@ export interface SongData {
   featured: boolean;
   order: number;
   albumId?: string;
+  genre?: string;
 }
 
 export interface ArtworkData {

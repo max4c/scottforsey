@@ -68,7 +68,7 @@ export const update = mutation({
   },
   handler: async (ctx, { token, id, clearCover, ...updates }) => {
     await validateSession(ctx, token);
-    const filtered = Object.fromEntries(
+    const filtered: Record<string, any> = Object.fromEntries(
       Object.entries(updates).filter(([, val]) => val !== undefined)
     );
     if (clearCover) {

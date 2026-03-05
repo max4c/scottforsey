@@ -105,6 +105,95 @@ function AlbumFilterDropdown({
   );
 }
 
+function GenreFilterDropdown({
+  genres,
+  selected,
+  onChange,
+}: {
+  genres: string[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent | TouchEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('mousedown', onOutside);
+      document.addEventListener('touchstart', onOutside);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('touchstart', onOutside);
+    };
+  }, [open]);
+
+  function toggle(g: string) {
+    if (selected.includes(g)) onChange(selected.filter(x => x !== g));
+    else onChange([...selected, g]);
+  }
+
+  const label = selected.length === 0
+    ? 'All Genres'
+    : selected.length === 1
+      ? (selected[0] === '__none__' ? 'No Genre' : selected[0])
+      : `${selected.length} Genres`;
+
+  return (
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-brown/20 bg-white dark:bg-[#162040] text-brown dark:text-[#E8EDF8] text-sm focus:outline-none focus:border-sunset"
+      >
+        <span className="truncate">{label}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter flex-shrink-0 ml-2">
+          <path d="M7 10l5 5 5-5z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#1E2D52] rounded-xl shadow-lg border border-brown/10 dark:border-white/10 overflow-hidden z-20 py-1 max-h-60 overflow-y-auto">
+          <button
+            onClick={() => onChange([])}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.length === 0 ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+              {selected.length === 0 && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+            </span>
+            All Genres
+          </button>
+          {genres.map(g => (
+            <button
+              key={g}
+              onClick={() => toggle(g)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+            >
+              <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.includes(g) ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+                {selected.includes(g) && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+              </span>
+              {g}
+            </button>
+          ))}
+          <button
+            onClick={() => toggle('__none__')}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown dark:text-[#E8EDF8] hover:bg-parchment/60 dark:hover:bg-white/5 transition-colors text-left"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected.includes('__none__') ? 'bg-sunset border-sunset' : 'border-brown/30 dark:border-white/20'}`}>
+              {selected.includes('__none__') && <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>}
+            </span>
+            No Genre
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
@@ -116,7 +205,17 @@ export function MusicPageContent() {
   playQueueRef.current = playQueue;
   const [search, setSearch] = useState('');
   const [albumFilters, setAlbumFilters] = useState<string[]>([]);
+  const [genreFilters, setGenreFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
+
+  const allGenres = useMemo(() => {
+    if (!songs) return [];
+    const set = new Set<string>();
+    for (const s of songs as SongData[]) {
+      if (s.genre) set.add(s.genre);
+    }
+    return Array.from(set).sort();
+  }, [songs]);
 
   const filteredSongs = useMemo(() => {
     if (!songs) return [];
@@ -127,6 +226,15 @@ export function MusicPageContent() {
       list = list.filter(s => {
         if (albumFilters.includes('__none__') && !s.albumId) return true;
         if (s.albumId && albumFilters.includes(s.albumId)) return true;
+        return false;
+      });
+    }
+
+    // Genre filter (multi)
+    if (genreFilters.length > 0) {
+      list = list.filter(s => {
+        if (genreFilters.includes('__none__') && !s.genre) return true;
+        if (s.genre && genreFilters.includes(s.genre)) return true;
         return false;
       });
     }
@@ -146,7 +254,7 @@ export function MusicPageContent() {
     });
 
     return list;
-  }, [songs, search, albumFilters, sortBy]);
+  }, [songs, search, albumFilters, genreFilters, sortBy]);
 
   useEffect(() => {
     if (!trackParam || hasAutoPlayed.current || !songs || (songs as SongData[]).length === 0) return;
@@ -275,17 +383,26 @@ export function MusicPageContent() {
         <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>
 
         {/* Filter + Sort row */}
-        {albums.length > 0 && (
-          <div className="flex gap-2 mb-3">
-            <AlbumFilterDropdown
-              albums={albums as AlbumData[]}
-              selected={albumFilters}
-              onChange={setAlbumFilters}
-            />
+        {(albums.length > 0 || allGenres.length > 0) && (
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {albums.length > 0 && (
+              <AlbumFilterDropdown
+                albums={albums as AlbumData[]}
+                selected={albumFilters}
+                onChange={setAlbumFilters}
+              />
+            )}
+            {allGenres.length > 0 && (
+              <GenreFilterDropdown
+                genres={allGenres}
+                selected={genreFilters}
+                onChange={setGenreFilters}
+              />
+            )}
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as SortOption)}
-              className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-brown/20 bg-white text-brown text-sm focus:outline-none focus:border-sunset appearance-none"
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-brown/20 bg-white dark:bg-[#162040] text-brown dark:text-[#E8EDF8] text-sm focus:outline-none focus:border-sunset appearance-none"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%238B7355'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
             >
               <option value="title-asc">Title A→Z</option>
