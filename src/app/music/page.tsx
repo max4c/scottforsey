@@ -1,10 +1,42 @@
-export const metadata = {
-  title: 'Music — Scott Forsey',
-  description: 'Listen to music by Scott Forsey.',
-};
-
+import type { Metadata } from 'next';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../convex/_generated/api';
 import { Suspense } from 'react';
 import { MusicPageContent } from './music-content';
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+function slugify(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+type Props = {
+  searchParams: Promise<{ track?: string }>;
+};
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { track } = await searchParams;
+
+  if (track) {
+    const songs = await convex.query(api.songs.list);
+    const song = songs.find((s: { title: string }) => slugify(s.title) === track);
+    if (song) {
+      const title = `${song.title} — Scott Forsey`;
+      const description = `Listen to "${song.title}" by Scott Forsey.`;
+      return {
+        title,
+        description,
+        openGraph: { title, description },
+        twitter: { card: 'summary', title, description },
+      };
+    }
+  }
+
+  return {
+    title: 'Music — Scott Forsey',
+    description: 'Listen to music by Scott Forsey.',
+  };
+}
 
 export default function MusicPage() {
   return (
