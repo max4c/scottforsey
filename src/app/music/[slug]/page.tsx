@@ -60,6 +60,25 @@ export default function AlbumPage() {
   const searchParams = useSearchParams();
   const trackParam = searchParams.get('track');
   const hasAutoPlayed = useRef(false);
+  const playQueueRef = useRef(playQueue);
+  playQueueRef.current = playQueue;
+
+  const album = songs && albums
+    ? (albums as AlbumData[]).find(a => slugify(a.title) === slug)
+    : undefined;
+
+  const albumSongs = album
+    ? (songs as SongData[]).filter(s => s.albumId === album._id).sort((a, b) => a.order - b.order)
+    : [];
+
+  useEffect(() => {
+    if (!trackParam || hasAutoPlayed.current || albumSongs.length === 0 || !album) return;
+    const idx = albumSongs.findIndex(s => slugify(s.title) === trackParam);
+    if (idx === -1) return;
+    hasAutoPlayed.current = true;
+    const tracks = albumSongs.map(s => songToTrack(s, album));
+    playQueueRef.current(tracks, idx);
+  }, [trackParam, albumSongs, album]);
 
   if (!songs || !albums) {
     return (
@@ -68,8 +87,6 @@ export default function AlbumPage() {
       </div>
     );
   }
-
-  const album = (albums as AlbumData[]).find(a => slugify(a.title) === slug);
 
   if (!album) {
     return (
@@ -80,19 +97,7 @@ export default function AlbumPage() {
     );
   }
 
-  const albumSongs = (songs as SongData[])
-    .filter(s => s.albumId === album._id)
-    .sort((a, b) => a.order - b.order);
   const albumDuration = albumSongs.reduce((acc, s) => acc + s.duration, 0);
-
-  useEffect(() => {
-    if (!trackParam || hasAutoPlayed.current || albumSongs.length === 0) return;
-    const idx = albumSongs.findIndex(s => slugify(s.title) === trackParam);
-    if (idx === -1) return;
-    hasAutoPlayed.current = true;
-    const tracks = albumSongs.map(s => songToTrack(s, album));
-    playQueue(tracks, idx);
-  }, [trackParam, albumSongs, album, playQueue]);
 
   function handlePlay() {
     const tracks = albumSongs.map(s => songToTrack(s, album));

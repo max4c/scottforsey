@@ -104,6 +104,8 @@ export function MusicPageContent() {
   const searchParams = useSearchParams();
   const trackParam = searchParams.get('track');
   const hasAutoPlayed = useRef(false);
+  const playQueueRef = useRef(playQueue);
+  playQueueRef.current = playQueue;
   const [search, setSearch] = useState('');
   const [albumFilters, setAlbumFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
@@ -145,8 +147,8 @@ export function MusicPageContent() {
     if (idx === -1) return;
     hasAutoPlayed.current = true;
     const tracks = allSongs.map(s => songToTrack(s));
-    playQueue(tracks, idx);
-  }, [trackParam, songs, playQueue]);
+    playQueueRef.current(tracks, idx);
+  }, [trackParam, songs]);
 
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;
