@@ -380,7 +380,14 @@ interface BatchFile {
   genre: string;
 }
 
-function GenreInput({ value, onChange, genres, className }: { value: string; onChange: (v: string) => void; genres: string[]; className?: string }) {
+function GenreInput({ value, onChange, onCommit, genres, className, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit?: (v: string) => void;
+  genres: string[];
+  className?: string;
+  placeholder?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const filtered = value.trim()
@@ -403,6 +410,12 @@ function GenreInput({ value, onChange, genres, className }: { value: string; onC
     };
   }, [open]);
 
+  function commit(v: string) {
+    onChange(v);
+    setOpen(false);
+    onCommit?.(v);
+  }
+
   return (
     <div className="relative" ref={ref}>
       <input
@@ -410,13 +423,15 @@ function GenreInput({ value, onChange, genres, className }: { value: string; onC
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder="Genre (optional)"
+        onBlur={() => { setTimeout(() => { setOpen(false); onCommit?.(value); }, 150); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+        placeholder={placeholder ?? "Genre (optional)"}
         className={className ?? "w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"}
       />
       {open && filtered.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-brown/10 overflow-hidden z-20 py-1 max-h-40 overflow-y-auto">
           {filtered.map(g => (
-            <button key={g} onClick={() => { onChange(g); setOpen(false); }}
+            <button key={g} onMouseDown={(e) => e.preventDefault()} onClick={() => commit(g)}
               className="w-full text-left px-3 py-1.5 text-sm text-brown hover:bg-parchment/60 transition-colors">
               {g}
             </button>
@@ -463,6 +478,9 @@ function MusicSection({ token }: { token: string }) {
   // Song editing
   const [editingSongId, setEditingSongId] = useState<string | null>(null);
   const [editingSongTitle, setEditingSongTitle] = useState('');
+
+  // Per-song genre editing (local state keyed by song ID)
+  const [songGenres, setSongGenres] = useState<Record<string, string>>({});
 
   // Bulk selection
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -558,12 +576,13 @@ function MusicSection({ token }: { token: string }) {
 
   async function handleBulkApply() {
     if (bulkSelected.size === 0) return;
+    if (!bulkAlbumId && !bulkGenre) return;
     const ids = Array.from(bulkSelected) as Id<"songs">[];
     await bulkUpdateSongs({
       token,
       ids,
       ...(bulkAlbumId === '__clear__' ? { clearAlbum: true } : bulkAlbumId ? { albumId: bulkAlbumId as Id<"albums"> } : {}),
-      ...(bulkGenre === '__clear__' ? { clearGenre: true } : bulkGenre ? { genre: bulkGenre } : {}),
+      ...(bulkGenre ? { genre: bulkGenre.trim() } : {}),
     });
     setBulkSelected(new Set());
     setBulkGenre('');
@@ -692,14 +711,13 @@ function MusicSection({ token }: { token: string }) {
                     {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                   </select>
                 )}
-                <select
+                <GenreInput
                   value={bf.genre}
-                  onChange={(e) => setBatchFiles((prev) => prev.map((f, j) => j === i ? { ...f, genre: e.target.value } : f))}
-                  className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[110px]"
-                >
-                  <option value="">No genre</option>
-                  {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
+                  onChange={(v) => setBatchFiles((prev) => prev.map((f, j) => j === i ? { ...f, genre: v } : f))}
+                  genres={existingGenres}
+                  placeholder="Genre"
+                  className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset w-[110px]"
+                />
                 <button onClick={() => setBatchFiles((prev) => prev.filter((_, j) => j !== i))}
                   className="text-xs text-berry/60 active:text-berry flex-shrink-0">✕</button>
               </div>
@@ -763,12 +781,13 @@ function MusicSection({ token }: { token: string }) {
                     {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                   </select>
                 )}
-                <select value={bulkGenre} onChange={(e) => setBulkGenre(e.target.value)}
-                  className="text-xs px-2 py-1.5 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset">
-                  <option value="">— Genre —</option>
-                  <option value="__clear__">Remove genre</option>
-                  {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
+                <GenreInput
+                  value={bulkGenre}
+                  onChange={setBulkGenre}
+                  genres={existingGenres}
+                  placeholder="Genre"
+                  className="text-xs px-2 py-1.5 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset w-32"
+                />
                 <button onClick={handleBulkApply}
                   className="text-xs px-3 py-1.5 rounded-lg bg-sunset text-white font-semibold active:bg-sunset/90">
                   Apply to {bulkSelected.size}
@@ -828,11 +847,14 @@ function MusicSection({ token }: { token: string }) {
                   {albums.map((a) => <option key={a._id} value={a._id}>{a.title}</option>)}
                 </select>
               )}
-              <select value={(song as any).genre ?? ''} onChange={(e) => handleGenreChange(song._id, e.target.value)}
-                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset max-w-[120px]">
-                <option value="">No genre</option>
-                {existingGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-              </select>
+              <GenreInput
+                value={songGenres[song._id] ?? (song as any).genre ?? ''}
+                onChange={(v) => setSongGenres(prev => ({ ...prev, [song._id]: v }))}
+                onCommit={(v) => { handleGenreChange(song._id, v.trim()); setSongGenres(prev => { const next = { ...prev }; delete next[song._id]; return next; }); }}
+                genres={existingGenres}
+                placeholder="Genre"
+                className="text-xs px-2 py-1 rounded border border-brown/20 text-brown bg-white focus:outline-none focus:border-sunset w-[120px]"
+              />
               {(() => {
                 const group = (songs ?? []).filter((s: any) => s.albumId === (song as any).albumId).sort((a: any, b: any) => a.order - b.order);
                 const idx = group.findIndex((s: any) => s._id === song._id);
