@@ -184,15 +184,19 @@ class AudioPlayer {
 
   resume() {
     if (this._state !== 'paused') return;
-    this.audio?.play().catch(() => {});
-    this._state = 'playing';
-    this.notify();
+    // Don't set state eagerly — let the 'play' event handler set it
+    // so state stays 'paused' if play() is rejected (e.g. iOS autoplay policy)
+    this.audio?.play().catch(() => {
+      this._state = 'paused';
+      this.notify();
+    });
   }
 
   togglePlayPause() {
     if (this._state === 'playing') this.pause();
     else if (this._state === 'paused') this.resume();
     else if (this._state === 'loading' && this.audio) this.audio.play().catch(() => {});
+    else if (this._state === 'idle' && this._currentTrack) this.play(this._currentTrack);
   }
 
   seek(time: number) {
@@ -208,12 +212,12 @@ class AudioPlayer {
   }
 
   playQueue(tracks: Track[], startIndex: number = 0) {
-    this._originalQueue = tracks;
+    this._originalQueue = [...tracks];
     if (this._shuffle) {
       this._queue = shuffleArray(tracks);
       this._queueIndex = 0;
     } else {
-      this._queue = tracks;
+      this._queue = [...tracks];
       this._queueIndex = startIndex;
     }
     const track = this._queue[this._queueIndex];
@@ -221,8 +225,11 @@ class AudioPlayer {
   }
 
   addToQueue(track: Track) {
-    this._originalQueue.push(track);
-    this._queue.push(track);
+    // Avoid adding the same track twice in a row at the end of the queue
+    const last = this._queue[this._queue.length - 1];
+    if (last?.id === track.id) return;
+    this._originalQueue = [...this._originalQueue, track];
+    this._queue = [...this._queue, track];
     if (this._state === 'idle') {
       this._queueIndex = this._queue.length - 1;
       this.play(track);
@@ -232,8 +239,10 @@ class AudioPlayer {
 
   playNext(track: Track) {
     const at = this._queueIndex + 1;
-    this._queue.splice(at, 0, track);
-    this._originalQueue = [...this._queue];
+    const newQueue = [...this._queue];
+    newQueue.splice(at, 0, track);
+    this._queue = newQueue;
+    this._originalQueue = [...newQueue];
     if (this._state === 'idle') {
       this._queueIndex = 0;
       this.play(this._queue[0]);
@@ -244,8 +253,10 @@ class AudioPlayer {
   removeFromQueue(index: number) {
     if (index < 0 || index >= this._queue.length) return;
     if (index === this._queueIndex) return;
-    this._queue.splice(index, 1);
-    this._originalQueue = [...this._queue];
+    const newQueue = [...this._queue];
+    newQueue.splice(index, 1);
+    this._queue = newQueue;
+    this._originalQueue = [...newQueue];
     if (index < this._queueIndex) this._queueIndex--;
     this.notify();
   }

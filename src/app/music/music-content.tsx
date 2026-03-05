@@ -29,11 +29,19 @@ function AlbumFilterDropdown({
 
   useEffect(() => {
     if (!open) return;
-    function onOutside(e: MouseEvent) {
+    function onOutside(e: MouseEvent | TouchEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
+    // Defer listener so the opening tap doesn't immediately close the dropdown
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('mousedown', onOutside);
+      document.addEventListener('touchstart', onOutside);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('touchstart', onOutside);
+    };
   }, [open]);
 
   function toggle(id: string) {

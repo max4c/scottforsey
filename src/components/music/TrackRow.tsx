@@ -40,13 +40,20 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: Trac
 
   useEffect(() => {
     if (!menuOpen) return;
-    function onClickOutside(e: MouseEvent) {
+    function onClickOutside(e: MouseEvent | TouchEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    const id = requestAnimationFrame(() => {
+      document.addEventListener('mousedown', onClickOutside);
+      document.addEventListener('touchstart', onClickOutside);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('touchstart', onClickOutside);
+    };
   }, [menuOpen]);
 
   function handleRowClick() {

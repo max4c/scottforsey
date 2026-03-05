@@ -76,6 +76,15 @@ export const update = mutation({
       if (album?.coverStorageId) await ctx.storage.delete(album.coverStorageId);
       await ctx.db.patch(id, { ...filtered, coverStorageId: undefined, coverUrl: undefined });
     } else {
+      // If replacing cover with a new one, delete the old storage file
+      if (filtered.coverStorageId) {
+        const album = await ctx.db.get(id);
+        if (album?.coverStorageId && album.coverStorageId !== filtered.coverStorageId) {
+          await ctx.storage.delete(album.coverStorageId);
+        }
+        // Clear legacy coverUrl field when setting a new storage-based cover
+        filtered.coverUrl = undefined;
+      }
       await ctx.db.patch(id, filtered);
     }
   },
