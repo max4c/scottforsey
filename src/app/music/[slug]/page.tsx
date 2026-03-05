@@ -11,7 +11,8 @@ import { songToTrack } from '@/components/music/TrackRow';
 import { formatDuration } from '@/lib/types';
 import { slugify } from '@/lib/slug';
 import type { SongData, AlbumData } from '@/lib/types';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 function ShareButton({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
@@ -56,6 +57,9 @@ export default function AlbumPage() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
+  const searchParams = useSearchParams();
+  const trackParam = searchParams.get('track');
+  const hasAutoPlayed = useRef(false);
 
   if (!songs || !albums) {
     return (
@@ -80,6 +84,15 @@ export default function AlbumPage() {
     .filter(s => s.albumId === album._id)
     .sort((a, b) => a.order - b.order);
   const albumDuration = albumSongs.reduce((acc, s) => acc + s.duration, 0);
+
+  useEffect(() => {
+    if (!trackParam || hasAutoPlayed.current || albumSongs.length === 0) return;
+    const idx = albumSongs.findIndex(s => slugify(s.title) === trackParam);
+    if (idx === -1) return;
+    hasAutoPlayed.current = true;
+    const tracks = albumSongs.map(s => songToTrack(s, album));
+    playQueue(tracks, idx);
+  }, [trackParam, albumSongs, album, playQueue]);
 
   function handlePlay() {
     const tracks = albumSongs.map(s => songToTrack(s, album));

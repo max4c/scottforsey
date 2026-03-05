@@ -10,6 +10,7 @@ import { formatDuration } from '@/lib/types';
 import type { SongData, AlbumData } from '@/lib/types';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { slugify } from '@/lib/slug';
 
 type SortOption = 'title-asc' | 'title-desc' | 'duration-asc' | 'duration-desc' | 'recently-added';
@@ -100,6 +101,9 @@ export function MusicPageContent() {
   const songs = useQuery(api.songs.list);
   const albums = useQuery(api.albums.list);
   const { playQueue, toggleShuffle, shuffle } = useAudioPlayer();
+  const searchParams = useSearchParams();
+  const trackParam = searchParams.get('track');
+  const hasAutoPlayed = useRef(false);
   const [search, setSearch] = useState('');
   const [albumFilters, setAlbumFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('title-asc');
@@ -133,6 +137,16 @@ export function MusicPageContent() {
 
     return list;
   }, [songs, search, albumFilters, sortBy]);
+
+  useEffect(() => {
+    if (!trackParam || hasAutoPlayed.current || !songs || (songs as SongData[]).length === 0) return;
+    const allSongs = songs as SongData[];
+    const idx = allSongs.findIndex(s => slugify(s.title) === trackParam);
+    if (idx === -1) return;
+    hasAutoPlayed.current = true;
+    const tracks = allSongs.map(s => songToTrack(s));
+    playQueue(tracks, idx);
+  }, [trackParam, songs, playQueue]);
 
   if (!songs || !albums) {
     return <p className="text-brown-lighter">Loading...</p>;

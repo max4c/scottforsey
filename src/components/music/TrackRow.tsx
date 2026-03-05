@@ -2,6 +2,7 @@
 
 import { useAudioPlayer, Track } from '@/lib/audio/context';
 import { formatDuration, SongData } from '@/lib/types';
+import { slugify } from '@/lib/slug';
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 
@@ -134,6 +135,23 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: Trac
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-grass flex-shrink-0"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>
               Add to queue
+            </button>
+            <button
+              onClick={() => {
+                const songSlug = slugify(song.title);
+                const base = album ? `/music/${slugify(album.title)}` : '/music';
+                const url = `${window.location.origin}${base}?track=${songSlug}`;
+                if (navigator.share) {
+                  navigator.share({ title: song.title, url }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(url);
+                }
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-brown hover:bg-parchment/60 transition-colors text-left"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-brown-lighter flex-shrink-0"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" /></svg>
+              Share song
             </button>
           </div>
         )}
