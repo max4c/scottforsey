@@ -378,6 +378,42 @@ export function MusicPageContent() {
         );
       })()}
 
+      {/* Genre pills */}
+      {allGenres.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display font-bold text-brown text-lg mb-3">Genres</h2>
+          <div className="flex flex-wrap gap-2">
+            {allGenres.map(g => {
+              const active = genreFilters.includes(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() => {
+                    if (active) setGenreFilters(genreFilters.filter(x => x !== g));
+                    else setGenreFilters([...genreFilters, g]);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                    active
+                      ? 'bg-sunset text-white'
+                      : 'bg-parchment dark:bg-[#1E2D52] text-brown dark:text-[#E8EDF8] hover:bg-sunset/20'
+                  }`}
+                >
+                  {g}
+                </button>
+              );
+            })}
+            {genreFilters.length > 0 && (
+              <button
+                onClick={() => setGenreFilters([])}
+                className="px-3.5 py-1.5 rounded-full text-sm font-semibold text-brown-lighter hover:text-brown transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* All Tracks */}
       <div>
         <h2 className="font-display font-bold text-brown text-lg mb-3">All Tracks</h2>

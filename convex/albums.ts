@@ -71,7 +71,6 @@ export const update = mutation({
     const filtered: Record<string, any> = Object.fromEntries(
       Object.entries(updates).filter(([, val]) => val !== undefined)
     );
-    console.log("album update - id:", id, "filtered:", JSON.stringify(filtered), "clearCover:", clearCover);
     if (clearCover) {
       const album = await ctx.db.get(id);
       if (album?.coverStorageId) await ctx.storage.delete(album.coverStorageId);

@@ -165,6 +165,7 @@ function AlbumsSection({ token }: { token: string }) {
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const [editAlbumType, setEditAlbumType] = useState<'album' | 'draft'>('album');
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!coverFile) { setCoverPreview(null); return; }
@@ -186,6 +187,7 @@ function AlbumsSection({ token }: { token: string }) {
     setEditDescription(album.description ?? '');
     setEditAlbumType(album.albumType ?? 'album');
     setEditCoverFile(null);
+    setEditError(null);
   }
 
   function cancelEdit() {
@@ -219,6 +221,7 @@ function AlbumsSection({ token }: { token: string }) {
 
   const handleSaveEdit = async (album: any) => {
     setEditSaving(true);
+    setEditError(null);
     try {
       let coverStorageId: Id<"_storage"> | undefined;
       if (editCoverFile) {
@@ -230,15 +233,16 @@ function AlbumsSection({ token }: { token: string }) {
       await updateAlbum({
         token,
         id: album._id as Id<"albums">,
-        title: editTitle.trim() || undefined,
+        title: editTitle.trim() || album.title,
         description: editDescription.trim() || undefined,
         albumType: editAlbumType,
         ...(coverStorageId ? { coverStorageId } : {}),
       });
       setEditingId(null);
       setEditCoverFile(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save album:', err);
+      setEditError(err?.message ?? 'Failed to save. Check console.');
     } finally {
       setEditSaving(false);
     }
@@ -321,6 +325,9 @@ function AlbumsSection({ token }: { token: string }) {
                     </div>
                   )}
                 </div>
+                {editError && (
+                  <p className="text-xs text-berry bg-berry/10 rounded-lg px-3 py-2">{editError}</p>
+                )}
                 <div className="flex gap-2">
                   <button onClick={() => handleSaveEdit(album)} disabled={editSaving}
                     className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
@@ -390,6 +397,8 @@ function GenreInput({ value, onChange, onCommit, genres, className, placeholder 
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
   const filtered = value.trim()
     ? genres.filter(g => g.toLowerCase().includes(value.toLowerCase()) && g !== value)
     : genres.filter(g => g !== value);
@@ -423,8 +432,8 @@ function GenreInput({ value, onChange, onCommit, genres, className, placeholder 
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => { setTimeout(() => { setOpen(false); onCommit?.(value); }, 150); }}
-        onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+        onBlur={() => { setTimeout(() => { setOpen(false); onCommit?.(valueRef.current); }, 150); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(valueRef.current); (e.target as HTMLInputElement).blur(); } }}
         placeholder={placeholder ?? "Genre (optional)"}
         className={className ?? "w-full px-3 py-2 rounded border border-brown/20 text-brown text-sm focus:outline-none focus:border-sunset"}
       />
