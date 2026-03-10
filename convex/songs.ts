@@ -9,7 +9,7 @@ export const list = query({
     return Promise.all(
       visible.map(async (s) => ({
         ...s,
-        url: s.storageId ? await ctx.storage.getUrl(s.storageId) : s.audioUrl ?? null,
+        url: s.audioUrl ?? (s.storageId ? await ctx.storage.getUrl(s.storageId) : null),
       }))
     );
   },
@@ -20,7 +20,7 @@ export const getAudioUrl = query({
   handler: async (ctx, { id }) => {
     const song = await ctx.db.get(id);
     if (!song || !song.isVisible) return null;
-    return song.storageId ? await ctx.storage.getUrl(song.storageId) : song.audioUrl ?? null;
+    return song.audioUrl ?? (song.storageId ? await ctx.storage.getUrl(song.storageId) : null);
   },
 });
 
@@ -31,7 +31,7 @@ export const getFeatured = query({
     return Promise.all(
       featured.map(async (s) => ({
         ...s,
-        url: s.storageId ? await ctx.storage.getUrl(s.storageId) : s.audioUrl ?? null,
+        url: s.audioUrl ?? (s.storageId ? await ctx.storage.getUrl(s.storageId) : null),
       }))
     );
   },
@@ -45,7 +45,7 @@ export const listAll = query({
     return Promise.all(
       songs.sort((a, b) => a.order - b.order).map(async (s) => ({
         ...s,
-        url: s.storageId ? await ctx.storage.getUrl(s.storageId) : s.audioUrl ?? null,
+        url: s.audioUrl ?? (s.storageId ? await ctx.storage.getUrl(s.storageId) : null),
       }))
     );
   },
@@ -84,6 +84,7 @@ export const update = mutation({
     order: v.optional(v.number()),
     albumId: v.optional(v.id("albums")),
     clearAlbum: v.optional(v.boolean()),
+    audioUrl: v.optional(v.string()),
     genre: v.optional(v.string()),
     clearGenre: v.optional(v.boolean()),
   },

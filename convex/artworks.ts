@@ -9,7 +9,7 @@ export const list = query({
     return Promise.all(
       visible.map(async (a) => ({
         ...a,
-        url: a.storageId ? await ctx.storage.getUrl(a.storageId) : a.imageUrl ?? null,
+        url: a.imageUrl ?? (a.storageId ? await ctx.storage.getUrl(a.storageId) : null),
       }))
     );
   },
@@ -22,7 +22,7 @@ export const getFeatured = query({
     return Promise.all(
       featured.map(async (a) => ({
         ...a,
-        url: a.storageId ? await ctx.storage.getUrl(a.storageId) : a.imageUrl ?? null,
+        url: a.imageUrl ?? (a.storageId ? await ctx.storage.getUrl(a.storageId) : null),
       }))
     );
   },
@@ -36,7 +36,7 @@ export const listAll = query({
     return Promise.all(
       artworks.map(async (a) => ({
         ...a,
-        url: a.storageId ? await ctx.storage.getUrl(a.storageId) : a.imageUrl ?? null,
+        url: a.imageUrl ?? (a.storageId ? await ctx.storage.getUrl(a.storageId) : null),
       }))
     );
   },
@@ -76,6 +76,7 @@ export const update = mutation({
     series: v.optional(v.string()),
     featured: v.optional(v.boolean()),
     isVisible: v.optional(v.boolean()),
+    imageUrl: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, { token, id, ...updates }) => {

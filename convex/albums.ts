@@ -2,16 +2,23 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { validateSession } from "./admin";
 
+async function withCoverUrls(
+  ctx: { storage: { getUrl: (id: any) => Promise<string | null> } },
+  albums: any[],
+) {
+  return Promise.all(
+    albums.map(async (a) => ({
+      ...a,
+      coverUrl: a.coverUrl ?? (a.coverStorageId ? await ctx.storage.getUrl(a.coverStorageId) : null),
+    }))
+  );
+}
+
 export const list = query({
   handler: async (ctx) => {
     const albums = await ctx.db.query("albums").collect();
     const visible = albums.filter((a) => a.isVisible).sort((a, b) => a.order - b.order);
-    return Promise.all(
-      visible.map(async (a) => ({
-        ...a,
-        coverUrl: a.coverStorageId ? await ctx.storage.getUrl(a.coverStorageId) : a.coverUrl ?? null,
-      }))
-    );
+    return withCoverUrls(ctx, visible);
   },
 });
 
@@ -20,12 +27,15 @@ export const listAll = query({
   handler: async (ctx, { token }) => {
     await validateSession(ctx, token);
     const albums = await ctx.db.query("albums").collect();
-    return Promise.all(
-      albums.sort((a, b) => a.order - b.order).map(async (a) => ({
-        ...a,
-        coverUrl: a.coverStorageId ? await ctx.storage.getUrl(a.coverStorageId) : a.coverUrl ?? null,
-      }))
-    );
+    return withCoverUrls(ctx, albums.sort((a, b) => a.order - b.order));
+  },
+});
+
+export const getFeatured = query({
+  handler: async (ctx) => {
+    const albums = await ctx.db.query("albums").collect();
+    const featured = albums.filter((a) => a.isVisible && a.featured).sort((a, b) => a.order - b.order);
+    return withCoverUrls(ctx, featured);
   },
 });
 
@@ -63,7 +73,9 @@ export const update = mutation({
     gradientFrom: v.optional(v.string()),
     gradientTo: v.optional(v.string()),
     coverStorageId: v.optional(v.id("_storage")),
+    coverUrl: v.optional(v.string()),
     clearCover: v.optional(v.boolean()),
+    featured: v.optional(v.boolean()),
     albumType: v.optional(v.union(v.literal('album'), v.literal('draft'))),
   },
   handler: async (ctx, { token, id, clearCover, ...updates }) => {
@@ -82,8 +94,15 @@ export const update = mutation({
         if (album?.coverStorageId && album.coverStorageId !== filtered.coverStorageId) {
           await ctx.storage.delete(album.coverStorageId);
         }
-        // Clear legacy coverUrl field when setting a new storage-based cover
         filtered.coverUrl = undefined;
+      }
+      // If setting an R2 URL, clear the old storage-based cover
+      if (filtered.coverUrl) {
+        const album = await ctx.db.get(id);
+        if (album?.coverStorageId) {
+          await ctx.storage.delete(album.coverStorageId);
+        }
+        filtered.coverStorageId = undefined;
       }
       await ctx.db.patch(id, filtered);
     }

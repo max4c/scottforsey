@@ -145,7 +145,7 @@ export function MusicBar() {
           >
             <div className="w-9 h-9 rounded flex-shrink-0 overflow-hidden bg-gradient-to-br from-sky via-sunset to-berry">
               {currentTrack.coverUrl && (
-                <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" />
+                <img src={currentTrack.coverUrl} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               )}
             </div>
             <div className="min-w-0">

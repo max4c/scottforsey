@@ -11,6 +11,7 @@ export default defineSchema({
     gradientTo: v.optional(v.string()),
     order: v.number(),
     isVisible: v.boolean(),
+    featured: v.optional(v.boolean()),
     albumType: v.optional(v.union(v.literal('album'), v.literal('draft'))),
   }),
 
@@ -48,5 +49,7 @@ export default defineSchema({
   siteSettings: defineTable({
     profileImageStorageId: v.optional(v.id("_storage")),
     faviconStorageId: v.optional(v.id("_storage")),
+    profileImageUrl: v.optional(v.string()),
+    faviconUrl: v.optional(v.string()),
   }),
 });

@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+
 interface AlbumCoverProps {
   coverUrl?: string | null;
   gradientFrom?: string;
@@ -14,20 +18,21 @@ const sizes = {
 };
 
 export function AlbumCover({ coverUrl, gradientFrom, gradientTo, title, size = 'md', className = '' }: AlbumCoverProps) {
+  const [imgError, setImgError] = useState(false);
   const sizeClass = sizes[size];
+  const from = gradientFrom ?? '#f4a261';
+  const to = gradientTo ?? '#e76f51';
 
-  if (coverUrl) {
+  if (coverUrl && !imgError) {
     return (
       <img
         src={coverUrl}
         alt={title}
+        onError={() => setImgError(true)}
         className={`${sizeClass} rounded-lg object-cover shadow-sm flex-shrink-0 ${className}`}
       />
     );
   }
-
-  const from = gradientFrom ?? '#f4a261';
-  const to = gradientTo ?? '#e76f51';
 
   return (
     <div

@@ -7,6 +7,7 @@ import NextImage from 'next/image';
 import type { Id } from '../../../convex/_generated/dataModel';
 import { FileButton } from '@/components/ui/FileButton';
 import { AlbumCover } from '@/components/music/AlbumCover';
+import { uploadToR2 } from '@/lib/upload';
 
 const TOKEN_KEY = 'scottforsey_admin_token';
 
@@ -146,7 +147,6 @@ function AlbumsSection({ token }: { token: string }) {
   const createAlbum = useMutation(api.albums.create);
   const updateAlbum = useMutation(api.albums.update);
   const removeAlbum = useMutation(api.albums.remove);
-  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   // Create form
   const [title, setTitle] = useState('');
@@ -199,14 +199,11 @@ function AlbumsSection({ token }: { token: string }) {
     if (!title.trim()) return;
     setUploading(true);
     try {
-      let coverStorageId: Id<"_storage"> | undefined;
+      let coverUrl: string | undefined;
       if (coverFile) {
-        const uploadUrl = await generateUploadUrl({ token });
-        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': coverFile.type }, body: coverFile });
-        const { storageId } = await result.json();
-        coverStorageId = storageId;
+        coverUrl = await uploadToR2(coverFile, 'albums', token);
       }
-      await createAlbum({ token, title: title.trim(), description: description.trim() || undefined, coverStorageId, gradientFrom, gradientTo });
+      await createAlbum({ token, title: title.trim(), description: description.trim() || undefined, coverUrl, gradientFrom, gradientTo });
       setTitle('');
       setDescription('');
       setCoverFile(null);
@@ -223,12 +220,9 @@ function AlbumsSection({ token }: { token: string }) {
     setEditSaving(true);
     setEditError(null);
     try {
-      let coverStorageId: Id<"_storage"> | undefined;
+      let coverUrl: string | undefined;
       if (editCoverFile) {
-        const uploadUrl = await generateUploadUrl({ token });
-        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': editCoverFile.type }, body: editCoverFile });
-        const { storageId } = await result.json();
-        coverStorageId = storageId;
+        coverUrl = await uploadToR2(editCoverFile, 'albums', token);
       }
       await updateAlbum({
         token,
@@ -236,7 +230,7 @@ function AlbumsSection({ token }: { token: string }) {
         title: editTitle.trim() || album.title,
         description: editDescription.trim() || undefined,
         albumType: editAlbumType,
-        ...(coverStorageId ? { coverStorageId } : {}),
+        ...(coverUrl ? { coverUrl } : {}),
       });
       setEditingId(null);
       setEditCoverFile(null);
@@ -364,6 +358,10 @@ function AlbumsSection({ token }: { token: string }) {
                   className={`text-xs px-2 py-1 rounded ${album.isVisible ? 'bg-grass/20 text-grass' : 'bg-parchment text-brown-lighter'}`}>
                   {album.isVisible ? 'Visible' : 'Hidden'}
                 </button>
+                <button onClick={() => updateAlbum({ token, id: album._id as Id<"albums">, featured: !album.featured })}
+                  className={`text-xs px-2 py-1 rounded ${album.featured ? 'bg-sunset/20 text-sunset' : 'bg-parchment text-brown-lighter'}`}>
+                  {album.featured ? '★' : '☆'}
+                </button>
                 <button onClick={() => { if (confirm(`Delete "${album.title}"? Songs will be unassigned.`)) removeAlbum({ token, id: album._id as Id<"albums"> }); }}
                   className="text-xs text-berry/60 active:text-berry">
                   Delete
@@ -458,7 +456,6 @@ function MusicSection({ token }: { token: string }) {
   const updateSong = useMutation(api.songs.update);
   const bulkUpdateSongs = useMutation(api.songs.bulkUpdate);
   const removeSong = useMutation(api.songs.remove);
-  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   // Existing genres derived from songs
   const existingGenres = useMemo(() => {
@@ -531,10 +528,8 @@ function MusicSection({ token }: { token: string }) {
     setUploading(true);
     try {
       const duration = await getAudioDuration(audioFile);
-      const uploadUrl = await generateUploadUrl({ token });
-      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': audioFile.type }, body: audioFile });
-      const { storageId } = await result.json();
-      await createSong({ token, title: title.trim(), storageId, duration: Math.round(duration), featured: false, albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined, genre: newSongGenre.trim() || undefined });
+      const audioUrl = await uploadToR2(audioFile, 'songs', token);
+      await createSong({ token, title: title.trim(), audioUrl, duration: Math.round(duration), featured: false, albumId: newSongAlbumId ? newSongAlbumId as Id<"albums"> : undefined, genre: newSongGenre.trim() || undefined });
       setTitle('');
       setNewSongAlbumId('');
       setNewSongGenre('');
@@ -554,10 +549,8 @@ function MusicSection({ token }: { token: string }) {
       const { file, title: t, albumId, genre } = batchFiles[i];
       try {
         const duration = await getAudioDuration(file);
-        const uploadUrl = await generateUploadUrl({ token });
-        const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
-        const { storageId } = await result.json();
-        await createSong({ token, title: t.trim() || file.name, storageId, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined, genre: genre.trim() || undefined });
+        const audioUrl = await uploadToR2(file, 'songs', token);
+        await createSong({ token, title: t.trim() || file.name, audioUrl, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined, genre: genre.trim() || undefined });
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err);
       }
@@ -906,7 +899,6 @@ function ArtSection({ token }: { token: string }) {
   const createArtwork = useMutation(api.artworks.create);
   const updateArtwork = useMutation(api.artworks.update);
   const removeArtwork = useMutation(api.artworks.remove);
-  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   // Create form
   const [artFile, setArtFile] = useState<File | null>(null);
@@ -974,11 +966,9 @@ function ArtSection({ token }: { token: string }) {
     setUploading(true);
     try {
       const { width, height } = await getImageDimensions(file);
-      const uploadUrl = await generateUploadUrl({ token });
-      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
-      const { storageId } = await result.json();
+      const imageUrl = await uploadToR2(file, 'artworks', token);
       await createArtwork({
-        token, title: title.trim(), storageId,
+        token, title: title.trim(), imageUrl,
         medium: medium.trim(),
         year: parseInt(year) || new Date().getFullYear(),
         dimensions: dimensions.trim() || `${width}x${height}`,
@@ -1106,7 +1096,6 @@ function ArtSection({ token }: { token: string }) {
 function SiteSection({ token }: { token: string }) {
   const settings = useQuery(api.siteSettings.get);
   const updateSettings = useMutation(api.siteSettings.update);
-  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -1123,11 +1112,9 @@ function SiteSection({ token }: { token: string }) {
     if (!photoFile) return;
     setUploading(true);
     try {
-      const uploadUrl = await generateUploadUrl({ token });
-      const result = await fetch(uploadUrl, { method: 'POST', headers: { 'Content-Type': photoFile.type }, body: photoFile });
-      const { storageId } = await result.json();
+      const url = await uploadToR2(photoFile, 'site', token);
       // Same image used for both the header photo and the browser tab icon
-      await updateSettings({ token, profileImageStorageId: storageId, faviconStorageId: storageId });
+      await updateSettings({ token, profileImageUrl: url, faviconUrl: url });
       setPhotoFile(null);
     } catch (err) {
       console.error('Upload failed:', err);

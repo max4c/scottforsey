@@ -144,7 +144,11 @@ export function FullscreenPlayer({ onClose }: FullscreenPlayerProps) {
   const upNext = queue.slice(queueIndex + 1);
   const upNextStartIndex = queueIndex + 1;
   const isPlaying = state === 'playing' || state === 'loading';
-  const hasCover = !!currentTrack.coverUrl;
+  const [coverError, setCoverError] = useState(false);
+  const hasCover = !!currentTrack.coverUrl && !coverError;
+
+  // Reset error state when track changes
+  useEffect(() => { setCoverError(false); }, [currentTrack.id]);
   const gradFrom = currentTrack.gradientFrom ?? '#162040';
   const gradTo = currentTrack.gradientTo ?? '#0B1120';
 
@@ -169,6 +173,7 @@ export function FullscreenPlayer({ onClose }: FullscreenPlayerProps) {
             alt=""
             aria-hidden
             className="absolute inset-0 w-full h-full object-cover scale-[1.2] blur-3xl brightness-[0.25] saturate-150"
+            onError={() => setCoverError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0B1120]/20 via-[#0B1120]/55 to-[#0B1120]/90" />
         </>
@@ -232,6 +237,7 @@ export function FullscreenPlayer({ onClose }: FullscreenPlayerProps) {
                     alt={currentTrack.albumTitle ?? currentTrack.title}
                     className="w-full h-full object-cover"
                     draggable={false}
+                    onError={() => setCoverError(true)}
                   />
                 ) : (
                   <div
