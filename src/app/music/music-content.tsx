@@ -256,13 +256,24 @@ export function MusicPageContent() {
     return list;
   }, [songs, search, albumFilters, genreFilters, sortBy]);
 
+  const albumMap = useMemo(() => {
+    if (!albums) return new Map<string, AlbumData>();
+    const map = new Map<string, AlbumData>();
+    for (const a of albums as AlbumData[]) map.set(a._id, a);
+    return map;
+  }, [albums]);
+
+  function getAlbum(song: SongData) {
+    return song.albumId ? albumMap.get(song.albumId) : undefined;
+  }
+
   useEffect(() => {
     if (!trackParam || hasAutoPlayed.current || !songs || (songs as SongData[]).length === 0) return;
     const allSongs = songs as SongData[];
     const idx = allSongs.findIndex(s => slugify(s.title) === trackParam);
     if (idx === -1) return;
     hasAutoPlayed.current = true;
-    const tracks = allSongs.map(s => songToTrack(s));
+    const tracks = allSongs.map(s => songToTrack(s, getAlbum(s)));
     playQueueRef.current(tracks, idx);
   }, [trackParam, songs]);
 
@@ -273,13 +284,13 @@ export function MusicPageContent() {
   const totalDuration = songs.reduce((acc, s) => acc + s.duration, 0);
 
   function handlePlayAll() {
-    const tracks = filteredSongs.map(s => songToTrack(s));
+    const tracks = filteredSongs.map(s => songToTrack(s, getAlbum(s)));
     if (shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
 
   function handleShuffle() {
-    const tracks = filteredSongs.map(s => songToTrack(s));
+    const tracks = filteredSongs.map(s => songToTrack(s, getAlbum(s)));
     if (!shuffle) toggleShuffle();
     playQueue(tracks, 0);
   }
@@ -299,7 +310,7 @@ export function MusicPageContent() {
             Shuffle
           </Button>
         </div>
-        <TrackList songs={songs as SongData[]} />
+        <TrackList songs={songs as SongData[]} albumMap={albumMap} />
       </>
     );
   }
@@ -423,7 +434,7 @@ export function MusicPageContent() {
           <div className="flex gap-2 mb-3 flex-wrap">
             {albums.length > 0 && (
               <AlbumFilterDropdown
-                albums={albums as AlbumData[]}
+                albumMap={albumMap}
                 selected={albumFilters}
                 onChange={setAlbumFilters}
               />
@@ -490,7 +501,7 @@ export function MusicPageContent() {
         {filteredSongs.length === 0 ? (
           <p className="text-sm text-brown-lighter text-center py-8">No songs match your filters</p>
         ) : (
-          <TrackList songs={filteredSongs} />
+          <TrackList songs={filteredSongs} albumMap={albumMap} />
         )}
       </div>
     </>

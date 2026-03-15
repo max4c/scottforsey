@@ -214,7 +214,9 @@ class AudioPlayer {
   playQueue(tracks: Track[], startIndex: number = 0) {
     this._originalQueue = [...tracks];
     if (this._shuffle) {
-      this._queue = shuffleArray(tracks);
+      const selected = tracks[startIndex];
+      const rest = tracks.filter((_, i) => i !== startIndex);
+      this._queue = selected ? [selected, ...shuffleArray(rest)] : shuffleArray(tracks);
       this._queueIndex = 0;
     } else {
       this._queue = [...tracks];

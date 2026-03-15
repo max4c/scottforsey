@@ -90,15 +90,20 @@ export function TrackRow({ song, allTracks, trackIndex, index = 0, album }: Trac
           )}
         </div>
 
-        {/* Title */}
-        <div className="flex-1 min-w-0 flex items-center gap-2 min-w-0">
-          <p className={`font-display font-semibold text-sm truncate ${isCurrentTrack ? 'text-sunset' : 'text-brown'}`}>
-            {song.title}
-          </p>
-          {isNew && (
-            <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky/20 text-sky-dark dark:text-sky leading-none">
-              NEW
-            </span>
+        {/* Title + Album */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`font-display font-semibold text-sm truncate ${isCurrentTrack ? 'text-sunset' : 'text-brown'}`}>
+              {song.title}
+            </p>
+            {isNew && (
+              <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky/20 text-sky-dark dark:text-sky leading-none">
+                NEW
+              </span>
+            )}
+          </div>
+          {album?.title && (
+            <p className="text-xs text-brown-lighter truncate">{album.title}</p>
           )}
         </div>
 
