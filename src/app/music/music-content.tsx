@@ -434,7 +434,7 @@ export function MusicPageContent() {
           <div className="flex gap-2 mb-3 flex-wrap">
             {albums.length > 0 && (
               <AlbumFilterDropdown
-                albumMap={albumMap}
+                albums={albums}
                 selected={albumFilters}
                 onChange={setAlbumFilters}
               />
