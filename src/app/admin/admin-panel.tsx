@@ -471,11 +471,13 @@ function MusicSection({ token }: { token: string }) {
   const [newSongAlbumId, setNewSongAlbumId] = useState('');
   const [newSongGenre, setNewSongGenre] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   // Batch upload
   const [batchFiles, setBatchFiles] = useState<BatchFile[]>([]);
   const [batchUploading, setBatchUploading] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [batchErrors, setBatchErrors] = useState<string[]>([]);
   const batchInputId = useId();
 
   // Song search
@@ -526,6 +528,7 @@ function MusicSection({ token }: { token: string }) {
   const handleUpload = async () => {
     if (!audioFile || !title.trim()) return;
     setUploading(true);
+    setUploadError('');
     try {
       const duration = await getAudioDuration(audioFile);
       const audioUrl = await uploadToR2(audioFile, 'songs', token);
@@ -536,6 +539,7 @@ function MusicSection({ token }: { token: string }) {
       setAudioFile(null);
     } catch (err) {
       console.error('Upload failed:', err);
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -545,6 +549,8 @@ function MusicSection({ token }: { token: string }) {
     if (batchFiles.length === 0) return;
     setBatchUploading(true);
     setBatchProgress(0);
+    setBatchErrors([]);
+    const errors: string[] = [];
     for (let i = 0; i < batchFiles.length; i++) {
       const { file, title: t, albumId, genre } = batchFiles[i];
       try {
@@ -553,10 +559,12 @@ function MusicSection({ token }: { token: string }) {
         await createSong({ token, title: t.trim() || file.name, audioUrl, duration: Math.round(duration), featured: false, albumId: albumId ? albumId as Id<"albums"> : undefined, genre: genre.trim() || undefined });
       } catch (err) {
         console.error(`Failed to upload ${file.name}:`, err);
+        errors.push(`${file.name}: ${err instanceof Error ? err.message : 'upload failed'}`);
       }
       setBatchProgress(i + 1);
     }
-    setBatchFiles([]);
+    setBatchErrors(errors);
+    if (errors.length === 0) setBatchFiles([]);
     setBatchUploading(false);
   };
 
@@ -666,6 +674,9 @@ function MusicSection({ token }: { token: string }) {
           className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Uploading...' : 'Add Song'}
         </button>
+        {uploadError && (
+          <p className="text-sm text-red-600 break-words">{uploadError}</p>
+        )}
       </div>
 
       {/* Batch Upload */}
@@ -731,6 +742,13 @@ function MusicSection({ token }: { token: string }) {
               </button>
               <button onClick={() => setBatchFiles([])} className="text-sm text-brown-lighter active:text-brown">Clear</button>
             </div>
+          </div>
+        )}
+        {batchErrors.length > 0 && (
+          <div className="space-y-1">
+            {batchErrors.map((e, i) => (
+              <p key={i} className="text-sm text-red-600 break-words">{e}</p>
+            ))}
           </div>
         )}
       </div>

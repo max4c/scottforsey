@@ -21,11 +21,15 @@ export async function uploadToR2(
 
   const { uploadUrl, publicUrl } = await res.json();
 
-  await fetch(uploadUrl, {
+  const putRes = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": file.type },
     body: file,
   });
+
+  if (!putRes.ok) {
+    throw new Error(`R2 upload failed: ${putRes.status} ${putRes.statusText}`);
+  }
 
   return publicUrl;
 }
