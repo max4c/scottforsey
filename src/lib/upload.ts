@@ -10,13 +10,35 @@ const EXT_MIME: Record<string, string> = {
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
   svg: "image/svg+xml",
 };
 
+// Strict HTTP token / MIME pattern. iOS Safari throws
+// "The string did not match the expected pattern" if a header value
+// contains anything outside this set.
+const SAFE_MIME = /^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/;
+
+function extOf(file: File): string | undefined {
+  const dot = file.name.lastIndexOf(".");
+  if (dot < 0) return undefined;
+  return file.name.slice(dot + 1).toLowerCase();
+}
+
 function resolveContentType(file: File): string {
-  if (file.type) return file.type;
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  return (ext && EXT_MIME[ext]) || "application/octet-stream";
+  const ext = extOf(file);
+  if (ext && EXT_MIME[ext]) return EXT_MIME[ext];
+  if (file.type && SAFE_MIME.test(file.type)) return file.type;
+  return "application/octet-stream";
+}
+
+function safeFilename(name: string): string {
+  // Replace anything outside a conservative ASCII set so the S3 key
+  // and signed URL can't contain characters that break URL parsing
+  // on iOS Safari (e.g. unicode, control chars, fancy quotes).
+  const cleaned = name.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  return cleaned || "file";
 }
 
 export async function uploadToR2(
@@ -25,12 +47,13 @@ export async function uploadToR2(
   token: string,
 ): Promise<string> {
   const contentType = resolveContentType(file);
+  const filename = safeFilename(file.name);
 
   const res = await fetch("/api/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      filename: file.name,
+      filename,
       contentType,
       folder,
       token,
