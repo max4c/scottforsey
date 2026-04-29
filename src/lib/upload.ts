@@ -1,14 +1,37 @@
+const EXT_MIME: Record<string, string> = {
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  aac: "audio/aac",
+  flac: "audio/flac",
+  ogg: "audio/ogg",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+};
+
+function resolveContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return (ext && EXT_MIME[ext]) || "application/octet-stream";
+}
+
 export async function uploadToR2(
   file: File,
   folder: string,
   token: string,
 ): Promise<string> {
+  const contentType = resolveContentType(file);
+
   const res = await fetch("/api/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       filename: file.name,
-      contentType: file.type,
+      contentType,
       folder,
       token,
     }),
@@ -23,7 +46,7 @@ export async function uploadToR2(
 
   const putRes = await fetch(uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
+    headers: { "Content-Type": contentType },
     body: file,
   });
 
