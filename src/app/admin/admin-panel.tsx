@@ -156,6 +156,7 @@ function AlbumsSection({ token }: { token: string }) {
   const [gradientFrom, setGradientFrom] = useState('#f4a261');
   const [gradientTo, setGradientTo] = useState('#e76f51');
   const [uploading, setUploading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -198,6 +199,7 @@ function AlbumsSection({ token }: { token: string }) {
   const handleCreate = async () => {
     if (!title.trim()) return;
     setUploading(true);
+    setCreateError(null);
     try {
       let coverUrl: string | undefined;
       if (coverFile) {
@@ -211,6 +213,7 @@ function AlbumsSection({ token }: { token: string }) {
       setGradientTo('#e76f51');
     } catch (err) {
       console.error('Failed to create album:', err);
+      setCreateError(err instanceof Error ? err.message : 'Failed to create album');
     } finally {
       setUploading(false);
     }
@@ -281,6 +284,9 @@ function AlbumsSection({ token }: { token: string }) {
           className="px-4 py-2 rounded-lg bg-sunset text-white text-sm font-semibold active:bg-sunset/90 disabled:opacity-50">
           {uploading ? 'Creating...' : 'Create Album'}
         </button>
+        {createError && (
+          <p className="text-sm text-red-600 break-words">{createError}</p>
+        )}
       </div>
 
       {/* List */}
